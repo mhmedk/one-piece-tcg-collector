@@ -1,26 +1,24 @@
-import { Set } from "@/types/set";
+import CardList from "@/components/CardList";
+import SideFilter from "@/components/SideFilter";
 
-const Home = async () => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_OP_API_URL}/allSets`);
-  const sets = await response.json();
+type PageProps = {
+  searchParams: Promise<{ set?: string }>;
+};
 
-  console.log("Sets:", sets);
+const Home = async ({ searchParams }: PageProps) => {
+  const { set: selectedSetId = "OP-01" } = await searchParams;
+
   return (
-    <section>
-      <h1 className="text-3xl font-bold text-center mt-5">
-        One Piece TCG Collector
-      </h1>
+    <main className="flex">
+      {/* Filter Sidebar */}
+      <aside className="w-64 shrink-0 border-r border-gray-200 p-4">
+        <h2 className="mb-4 text-lg font-semibold">Filter by Set</h2>
+        <SideFilter selectedSetId={selectedSetId} />
+      </aside>
 
-      <div className="mt-20 space-y-7">
-        <h3 className="text-xl font-semibold ml-5">Available Sets</h3>
-
-        <ul>
-          {sets.map((set: Set) => (
-            <li key={set.set_id}>{set.set_name}</li>
-          ))}
-        </ul>
-      </div>
-    </section>
+      {/* Main Content */}
+      <CardList selectedSetId={selectedSetId} />
+    </main>
   );
 };
 

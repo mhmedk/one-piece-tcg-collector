@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${sourceSans3.variable} ${oswald.variable} min-h-screen antialiased bg-background text-foreground`}
+        className={`${sourceSans3.className} ${oswald.variable} min-h-screen antialiased bg-background text-foreground`}
       >
         {children}
       </body>
