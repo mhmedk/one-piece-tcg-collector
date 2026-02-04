@@ -2,7 +2,9 @@ import { SetType } from "@/types/types";
 import Link from "next/link";
 
 const SideFilter = async ({ selectedSetId }: { selectedSetId: string }) => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_OP_API_URL}/allSets`);
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_OPTCG_API_URL}/allSets`,
+  );
 
   const sets: SetType[] = await response.json();
 

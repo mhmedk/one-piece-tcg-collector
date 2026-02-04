@@ -1,0 +1,152 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Search, X } from "lucide-react";
+
+interface SearchFilterProps {
+  types?: string[];
+  colors?: string[];
+  rarities?: string[];
+}
+
+export function SearchFilter({
+  types = ["Leader", "Character", "Event", "Stage", "DON!!"],
+  colors = ["Red", "Blue", "Green", "Purple", "Black", "Yellow"],
+  rarities = ["C", "UC", "R", "SR", "SEC", "L", "SP", "P"],
+}: SearchFilterProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+
+  const createQueryString = useCallback(
+    (params: Record<string, string | null>) => {
+      const newParams = new URLSearchParams(searchParams.toString());
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null) {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, value);
+        }
+      });
+
+      return newParams.toString();
+    },
+    [searchParams]
+  );
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    startTransition(() => {
+      router.push(`/?${createQueryString({ q: search || null })}`);
+    });
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    startTransition(() => {
+      router.push(`/?${createQueryString({ [key]: value === "all" ? null : value })}`);
+    });
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    startTransition(() => {
+      router.push("/");
+    });
+  };
+
+  const hasFilters = searchParams.has("q") || searchParams.has("type") ||
+                     searchParams.has("color") || searchParams.has("rarity");
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search cards..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button type="submit" disabled={isPending}>
+          Search
+        </Button>
+      </form>
+
+      <div className="flex flex-wrap gap-2">
+        <Select
+          value={searchParams.get("type") || "all"}
+          onValueChange={(value) => handleFilterChange("type", value)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Card Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {types.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={searchParams.get("color") || "all"}
+          onValueChange={(value) => handleFilterChange("color", value)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Color" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Colors</SelectItem>
+            {colors.map((color) => (
+              <SelectItem key={color} value={color}>
+                {color}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={searchParams.get("rarity") || "all"}
+          onValueChange={(value) => handleFilterChange("rarity", value)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Rarity" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Rarities</SelectItem>
+            {rarities.map((rarity) => (
+              <SelectItem key={rarity} value={rarity}>
+                {rarity}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasFilters && (
+          <Button variant="ghost" size="icon" onClick={clearFilters}>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Clear filters</span>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
