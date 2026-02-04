@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Oswald, Source_Sans_3 } from "next/font/google";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { Header } from "@/components/Header";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const sourceSans3 = Source_Sans_3({
@@ -23,11 +26,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${sourceSans3.className} ${oswald.variable} min-h-screen antialiased bg-background text-foreground`}
       >
-        {children}
+        <ThemeProvider>
+          <Header />
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
