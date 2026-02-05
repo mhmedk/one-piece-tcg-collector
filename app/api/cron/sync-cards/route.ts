@@ -3,6 +3,25 @@ import { NextResponse } from "next/server";
 
 const API_URL = process.env.NEXT_PUBLIC_OPTCG_API_URL!;
 
+async function fetchWithRetry(
+  url: string,
+  maxRetries = 3,
+  delayMs = 2000,
+): Promise<Response> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url);
+    if (response.ok || attempt === maxRetries) {
+      return response;
+    }
+    console.log(
+      `Fetch ${url} failed with ${response.status}, retrying (${attempt}/${maxRetries})...`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+  }
+  // Unreachable, but TypeScript needs it
+  throw new Error(`Failed to fetch ${url} after ${maxRetries} retries`);
+}
+
 // Create Supabase client lazily to avoid build-time errors
 function getSupabaseClient() {
   return createClient(
@@ -45,14 +64,14 @@ interface ApiCard {
 
 async function syncSets(supabase: ReturnType<typeof getSupabaseClient>) {
   // Fetch all sets from API (note: API requires trailing slash)
-  const setsResponse = await fetch(`${API_URL}/allSets/`);
+  const setsResponse = await fetchWithRetry(`${API_URL}/allSets/`);
   if (!setsResponse.ok) {
     throw new Error(`Failed to fetch sets: ${setsResponse.status}`);
   }
   const sets: ApiSet[] = await setsResponse.json();
 
   // Fetch all starter decks from API
-  const decksResponse = await fetch(`${API_URL}/allDecks/`);
+  const decksResponse = await fetchWithRetry(`${API_URL}/allDecks/`);
   if (!decksResponse.ok) {
     throw new Error(`Failed to fetch decks: ${decksResponse.status}`);
   }
@@ -94,7 +113,7 @@ async function syncCards(supabase: ReturnType<typeof getSupabaseClient>) {
 
   // Fetch all set cards at once (more efficient than per-set)
   console.log("Fetching all set cards...");
-  const setCardsResponse = await fetch(`${API_URL}/allSetCards/`);
+  const setCardsResponse = await fetchWithRetry(`${API_URL}/allSetCards/`);
   if (!setCardsResponse.ok) {
     throw new Error(`Failed to fetch set cards: ${setCardsResponse.status}`);
   }
@@ -103,7 +122,7 @@ async function syncCards(supabase: ReturnType<typeof getSupabaseClient>) {
 
   // Fetch all starter deck cards
   console.log("Fetching all starter deck cards...");
-  const deckCardsResponse = await fetch(`${API_URL}/allSTCards/`);
+  const deckCardsResponse = await fetchWithRetry(`${API_URL}/allSTCards/`);
   if (!deckCardsResponse.ok) {
     throw new Error(`Failed to fetch deck cards: ${deckCardsResponse.status}`);
   }
@@ -114,7 +133,7 @@ async function syncCards(supabase: ReturnType<typeof getSupabaseClient>) {
   let promoCardsWithSetId: ApiCard[] = [];
   console.log("Fetching all promo cards...");
   try {
-    const promoCardsResponse = await fetch(`${API_URL}/allPromoCards/`);
+    const promoCardsResponse = await fetchWithRetry(`${API_URL}/allPromoCards/`);
     if (promoCardsResponse.ok) {
       const promoCards: ApiCard[] = await promoCardsResponse.json();
       promoCardsWithSetId = promoCards.map((card) => ({
