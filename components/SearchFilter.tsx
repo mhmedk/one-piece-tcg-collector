@@ -13,13 +13,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 
+interface SetOption {
+  set_id: string;
+  set_name: string;
+}
+
 interface SearchFilterProps {
+  sets?: SetOption[];
   types?: string[];
   colors?: string[];
   rarities?: string[];
 }
 
 export function SearchFilter({
+  sets = [],
   types = ["Leader", "Character", "Event", "Stage", "DON!!"],
   colors = ["Red", "Blue", "Green", "Purple", "Black", "Yellow"],
   rarities = ["C", "UC", "R", "SR", "SEC", "L", "SP", "P"],
@@ -62,8 +69,9 @@ export function SearchFilter({
 
   const clearFilters = () => {
     setSearch("");
+    const set = searchParams.get("set");
     startTransition(() => {
-      router.push("/");
+      router.push(set ? `/?set=${set}` : "/");
     });
   };
 
@@ -89,6 +97,22 @@ export function SearchFilter({
       </form>
 
       <div className="flex flex-wrap gap-2">
+        <Select
+          value={searchParams.get("set") || "OP-01"}
+          onValueChange={(value) => handleFilterChange("set", value)}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Set" />
+          </SelectTrigger>
+          <SelectContent>
+            {sets.map((set) => (
+              <SelectItem key={set.set_id} value={set.set_id}>
+                {set.set_id} - {set.set_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select
           value={searchParams.get("type") || "all"}
           onValueChange={(value) => handleFilterChange("type", value)}
