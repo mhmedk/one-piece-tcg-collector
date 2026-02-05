@@ -41,6 +41,9 @@ const APITCG_FILES: Record<string, string | null> = {
   "eb01.json": "EB-01",
   "eb02.json": "EB-02",
   "prb01.json": "PRB-01",
+  // ! Where is PRB-02?? It's missing from apitcg repo, but it exists in optcgapi and is a real set. We'll get it from optcgapi and it should be upserted without issue since we use onConflict: "card_set_id"
+  // ! But we should investigate why it's missing from apitcg and whether there are other missing sets/cards. We could consider adding any missing sets/cards to the apitcg repo to keep it as complete as possible, since it's a great resource.
+  // TODO If no solution is found, we could consider using vega to scrape the data directly from the official card database as a last resort, since both apitcg and optcgapi have some gaps and inconsistencies. This would be more work to set up and maintain, but it would give us full control over the data and ensure we have everything. We could even contribute the scraper back to the community if it's built in a reusable way.
   "general.json": null, // ST-01 through ST-12; derive set_id from card id
   "promotions.json": null, // promos; derive set_id from card id
 };
