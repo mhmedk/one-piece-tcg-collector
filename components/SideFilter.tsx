@@ -1,16 +1,17 @@
-import { SetType } from "@/types/types";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 const SideFilter = async ({ selectedSetId }: { selectedSetId: string }) => {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_OPTCG_API_URL}/allSets`,
-  );
+  const supabase = await createClient();
 
-  const sets: SetType[] = await response.json();
+  const { data: sets } = await supabase
+    .from("sets")
+    .select("set_id, set_name")
+    .order("set_id");
 
   return (
     <ul className="space-y-1">
-      {sets.map((set) => (
+      {sets?.map((set) => (
         <li key={set.set_id}>
           <Link
             href={`/?set=${set.set_id}`}
