@@ -84,7 +84,7 @@ export function SearchFilter({
     });
   };
 
-  const handleCategoryChange = (prefix: string) => {
+  const handleCategoryChange = (prefix: (typeof SET_CATEGORIES)[number]["prefix"]) => {
     setActiveCategory(prefix);
     const firstSet = getSetsForCategory(sets, prefix)[0];
     if (firstSet) {
@@ -124,7 +124,7 @@ export function SearchFilter({
       <div className="flex flex-wrap gap-2">
         <Select
           value={activeCategory}
-          onValueChange={handleCategoryChange}
+          onValueChange={(v) => handleCategoryChange(v as (typeof SET_CATEGORIES)[number]["prefix"])}
         >
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Category" />
