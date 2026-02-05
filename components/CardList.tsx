@@ -45,12 +45,15 @@ const CardList = async ({
     query = query.eq("rarity", rarityFilter);
   }
 
-  const { data: cards } = await query;
+  const [{ data: cards }, { data: sets }] = await Promise.all([
+    query,
+    supabase.from("sets").select("set_id, set_name").order("set_id"),
+  ]);
 
   return (
     <section className="flex-1 py-6 px-4 lg:px-8">
       <div className="mb-6">
-        <SearchFilter />
+        <SearchFilter sets={sets ?? []} />
       </div>
 
       <div className="flex items-center justify-between mb-4">
