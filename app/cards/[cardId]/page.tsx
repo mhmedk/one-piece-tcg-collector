@@ -68,17 +68,17 @@ export default async function CardDetailPage({ params }: PageProps) {
         </Button>
       </Link>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
         {/* Card Image */}
         <div className="flex justify-center">
-          <div className="relative aspect-[3/4.2] w-full max-w-md overflow-hidden rounded-xl shadow-2xl">
+          <div className="overflow-hidden rounded-xl shadow-2xl">
             <Image
               src={card.card_image}
               alt={card.card_name}
-              fill
+              width={600}
+              height={838}
               priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
+              className="h-full w-auto max-h-[80vh] object-contain"
             />
           </div>
         </div>
