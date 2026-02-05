@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CardType } from "@/types/types";
+import { createClient } from "@/lib/supabase/server";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,28 +24,16 @@ const rarityColors: Record<string, string> = {
   P: "bg-cyan-500",
 };
 
-async function getCard(cardId: string): Promise<CardType | null> {
-  // Parse the card ID to get the set ID (e.g., "OP01-001" -> "OP-01")
-  const match = cardId.match(/^([A-Z]+)(\d+)-/);
-  if (!match) return null;
+async function getCard(cardId: string) {
+  const supabase = await createClient();
 
-  const prefix = match[1];
-  const setNum = match[2];
-  const setId = `${prefix}-${setNum}`;
+  const { data: card } = await supabase
+    .from("cards")
+    .select("*")
+    .eq("card_set_id", cardId)
+    .single();
 
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_OPTCG_API_URL}/sets/${setId}`,
-      { next: { revalidate: 3600 } },
-    );
-
-    if (!response.ok) return null;
-
-    const cards: CardType[] = await response.json();
-    return cards.find((c) => c.card_set_id === cardId) || null;
-  } catch {
-    return null;
-  }
+  return card;
 }
 
 export default async function CardDetailPage({ params }: PageProps) {

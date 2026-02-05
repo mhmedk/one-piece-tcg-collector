@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CardType } from "@/types/types";
+import { Card } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface CardTileProps {
-  card: CardType;
+  card: Card;
   showPrice?: boolean;
 }
 
