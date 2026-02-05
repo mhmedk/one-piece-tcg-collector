@@ -48,6 +48,7 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           data: {
             display_name: data.displayName,
           },
