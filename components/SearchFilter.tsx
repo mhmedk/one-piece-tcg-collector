@@ -25,6 +25,21 @@ interface SearchFilterProps {
   rarities?: string[];
 }
 
+const SET_CATEGORIES = [
+  { prefix: "OP", label: "Booster Packs" },
+  { prefix: "EB-", label: "Extra Boosters" },
+  { prefix: "ST-", label: "Starter Decks" },
+  { prefix: "PRB-", label: "Premium Boosters" },
+] as const;
+
+function getCategoryForSet(setId: string) {
+  return SET_CATEGORIES.find((c) => setId.startsWith(c.prefix))?.prefix ?? SET_CATEGORIES[0].prefix;
+}
+
+function getSetsForCategory(sets: SetOption[], prefix: string) {
+  return sets.filter((s) => s.set_id.startsWith(prefix));
+}
+
 export function SearchFilter({
   sets = [],
   types = ["Leader", "Character", "Event", "Stage", "DON!!"],
@@ -36,6 +51,8 @@ export function SearchFilter({
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState(searchParams.get("q") || "");
+  const currentSetId = searchParams.get("set") || "OP-01";
+  const [activeCategory, setActiveCategory] = useState(getCategoryForSet(currentSetId));
 
   const createQueryString = useCallback(
     (params: Record<string, string | null>) => {
@@ -65,6 +82,14 @@ export function SearchFilter({
     startTransition(() => {
       router.push(`/?${createQueryString({ [key]: value === "all" ? null : value })}`);
     });
+  };
+
+  const handleCategoryChange = (prefix: (typeof SET_CATEGORIES)[number]["prefix"]) => {
+    setActiveCategory(prefix);
+    const firstSet = getSetsForCategory(sets, prefix)[0];
+    if (firstSet) {
+      handleFilterChange("set", firstSet.set_id);
+    }
   };
 
   const clearFilters = () => {
@@ -98,14 +123,30 @@ export function SearchFilter({
 
       <div className="flex flex-wrap gap-2">
         <Select
-          value={searchParams.get("set") || "OP-01"}
+          value={activeCategory}
+          onValueChange={(v) => handleCategoryChange(v as (typeof SET_CATEGORIES)[number]["prefix"])}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            {SET_CATEGORIES.filter((c) => getSetsForCategory(sets, c.prefix).length > 0).map((c) => (
+              <SelectItem key={c.prefix} value={c.prefix}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={currentSetId}
           onValueChange={(value) => handleFilterChange("set", value)}
         >
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Set" />
           </SelectTrigger>
           <SelectContent>
-            {sets.map((set) => (
+            {getSetsForCategory(sets, activeCategory).map((set) => (
               <SelectItem key={set.set_id} value={set.set_id}>
                 {set.set_id} - {set.set_name}
               </SelectItem>

@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "www.optcgapi.com",
       },
+      {
+        protocol: "https",
+        hostname: "en.onepiece-cardgame.com",
+      },
     ],
   },
 };
