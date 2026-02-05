@@ -26,10 +26,10 @@ interface SearchFilterProps {
 }
 
 const SET_CATEGORIES = [
-  { prefix: "OP-", label: "Booster Packs" },
+  { prefix: "OP", label: "Booster Packs" },
   { prefix: "EB-", label: "Extra Boosters" },
   { prefix: "ST-", label: "Starter Decks" },
-  { prefix: "PROMO", label: "Promotional" },
+  { prefix: "PRB-", label: "Premium Boosters" },
 ] as const;
 
 function getCategoryForSet(setId: string) {
