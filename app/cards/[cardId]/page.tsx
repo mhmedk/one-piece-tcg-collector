@@ -27,12 +27,13 @@ const rarityColors: Record<string, string> = {
 async function getCard(cardId: string) {
   const supabase = await createClient();
 
-  const { data: card } = await supabase
+  const { data: card, error } = await supabase
     .from("cards")
     .select("*")
     .eq("card_set_id", cardId)
     .single();
 
+  if (error || !card) return null;
   return card;
 }
 
