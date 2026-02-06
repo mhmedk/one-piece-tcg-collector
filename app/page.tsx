@@ -12,7 +12,7 @@ type PageProps = {
 
 const Home = async ({ searchParams }: PageProps) => {
   const {
-    set: selectedSetId = "OP-01",
+    set: selectedSetLabel = "OP-01",
     q: searchQuery,
     type: typeFilter,
     color: colorFilter,
@@ -22,7 +22,7 @@ const Home = async ({ searchParams }: PageProps) => {
   return (
     <main className="min-h-[calc(100vh-3.5rem)]">
       <CardList
-        selectedSetId={selectedSetId}
+        selectedSetLabel={selectedSetLabel}
         searchQuery={searchQuery}
         typeFilter={typeFilter}
         colorFilter={colorFilter}

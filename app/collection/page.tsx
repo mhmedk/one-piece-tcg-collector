@@ -9,7 +9,7 @@ import { CollectionEntryForm } from "@/components/CollectionEntryForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Layers, DollarSign, TrendingUp, Package } from "lucide-react";
+import { Layers, DollarSign, Package } from "lucide-react";
 
 // Skeleton component for loading state
 function CollectionSkeleton() {
@@ -47,7 +47,6 @@ export default function CollectionPage() {
   // Handle ?add=cardId query param
   useEffect(() => {
     if (addCardId && user) {
-      // TODO: Fetch card name from API
       setAddingCard({ id: addCardId, name: addCardId });
       setShowAddDialog(true);
     }
@@ -87,8 +86,8 @@ export default function CollectionPage() {
     return (
       <main className="container-main py-8">
         <Skeleton className="h-10 w-48 mb-8" />
-        <div className="grid gap-4 md:grid-cols-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
+          {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
@@ -96,13 +95,6 @@ export default function CollectionPage() {
       </main>
     );
   }
-
-  const formattedTotalValue = stats
-    ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(stats.totalValue)
-    : "$0.00";
 
   const formattedTotalSpent = stats
     ? new Intl.NumberFormat("en-US", {
@@ -116,7 +108,7 @@ export default function CollectionPage() {
       <h1 className="page-title mb-8">My Collection</h1>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-8">
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cards</CardTitle>
@@ -133,15 +125,6 @@ export default function CollectionPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.uniqueCards || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Collection Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">{formattedTotalValue}</div>
           </CardContent>
         </Card>
         <Card>

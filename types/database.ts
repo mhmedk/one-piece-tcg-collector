@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -16,78 +14,72 @@ export type Database = {
     Tables: {
       cards: {
         Row: {
-          attribute: string | null
-          card_color: string
-          card_cost: string | null
-          card_image: string
-          card_image_id: string
-          card_name: string
-          card_power: string | null
-          card_set_id: string
-          card_text: string | null
-          card_type: string
-          counter_amount: number | null
+          attributes: string[]
+          block_number: number | null
+          category: string
+          colors: string[]
+          cost: number | null
+          counter: number | null
           created_at: string
+          effect: string | null
           id: string
-          inventory_price: number | null
-          life: string | null
-          market_price: number | null
+          img_url: string
+          life: number | null
+          name: string
+          pack_id: string
+          power: number | null
           rarity: string
-          set_id: string
-          sub_types: string | null
+          trigger_text: string | null
+          types: string[]
           updated_at: string
         }
         Insert: {
-          attribute?: string | null
-          card_color: string
-          card_cost?: string | null
-          card_image: string
-          card_image_id: string
-          card_name: string
-          card_power?: string | null
-          card_set_id: string
-          card_text?: string | null
-          card_type: string
-          counter_amount?: number | null
+          attributes: string[]
+          block_number?: number | null
+          category: string
+          colors: string[]
+          cost?: number | null
+          counter?: number | null
           created_at?: string
-          id?: string
-          inventory_price?: number | null
-          life?: string | null
-          market_price?: number | null
+          effect?: string | null
+          id: string
+          img_url: string
+          life?: number | null
+          name: string
+          pack_id: string
+          power?: number | null
           rarity: string
-          set_id: string
-          sub_types?: string | null
+          trigger_text?: string | null
+          types: string[]
           updated_at?: string
         }
         Update: {
-          attribute?: string | null
-          card_color?: string
-          card_cost?: string | null
-          card_image?: string
-          card_image_id?: string
-          card_name?: string
-          card_power?: string | null
-          card_set_id?: string
-          card_text?: string | null
-          card_type?: string
-          counter_amount?: number | null
+          attributes?: string[]
+          block_number?: number | null
+          category?: string
+          colors?: string[]
+          cost?: number | null
+          counter?: number | null
           created_at?: string
+          effect?: string | null
           id?: string
-          inventory_price?: number | null
-          life?: string | null
-          market_price?: number | null
+          img_url?: string
+          life?: number | null
+          name?: string
+          pack_id?: string
+          power?: number | null
           rarity?: string
-          set_id?: string
-          sub_types?: string | null
+          trigger_text?: string | null
+          types?: string[]
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "cards_set_id_fkey"
-            columns: ["set_id"]
+            foreignKeyName: "cards_pack_id_fkey"
+            columns: ["pack_id"]
             isOneToOne: false
             referencedRelation: "sets"
-            referencedColumns: ["set_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -146,21 +138,18 @@ export type Database = {
         Row: {
           card_id: string
           id: string
-          inventory_price: number | null
           market_price: number | null
           recorded_at: string
         }
         Insert: {
           card_id: string
           id?: string
-          inventory_price?: number | null
           market_price?: number | null
           recorded_at?: string
         }
         Update: {
           card_id?: string
           id?: string
-          inventory_price?: number | null
           market_price?: number | null
           recorded_at?: string
         }
@@ -176,30 +165,30 @@ export type Database = {
       }
       sets: {
         Row: {
-          card_count: number | null
           created_at: string
           id: string
-          release_date: string | null
-          set_id: string
-          set_name: string
+          label: string | null
+          name: string
+          prefix: string | null
+          raw_title: string
           updated_at: string
         }
         Insert: {
-          card_count?: number | null
           created_at?: string
-          id?: string
-          release_date?: string | null
-          set_id: string
-          set_name: string
+          id: string
+          label?: string | null
+          name: string
+          prefix?: string | null
+          raw_title: string
           updated_at?: string
         }
         Update: {
-          card_count?: number | null
           created_at?: string
           id?: string
-          release_date?: string | null
-          set_id?: string
-          set_name?: string
+          label?: string | null
+          name?: string
+          prefix?: string | null
+          raw_title?: string
           updated_at?: string
         }
         Relationships: []

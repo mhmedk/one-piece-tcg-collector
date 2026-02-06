@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 
 interface SetOption {
-  set_id: string;
-  set_name: string;
+  id: string;
+  label: string | null;
+  name: string;
+  prefix: string | null;
 }
 
 interface SearchFilterProps {
@@ -26,33 +28,42 @@ interface SearchFilterProps {
 }
 
 const SET_CATEGORIES = [
-  { prefix: "OP", label: "Booster Packs" },
-  { prefix: "EB-", label: "Extra Boosters" },
-  { prefix: "ST-", label: "Starter Decks" },
-  { prefix: "PRB-", label: "Premium Boosters" },
+  { prefix: "BOOSTER PACK", label: "Booster Packs" },
+  { prefix: "EXTRA BOOSTER", label: "Extra Boosters" },
+  { prefix: "STARTER DECK", label: "Starter Decks" },
+  { prefix: "PREMIUM BOOSTER", label: "Premium Boosters" },
 ] as const;
 
-function getCategoryForSet(setId: string) {
-  return SET_CATEGORIES.find((c) => setId.startsWith(c.prefix))?.prefix ?? SET_CATEGORIES[0].prefix;
+type CategoryPrefix = (typeof SET_CATEGORIES)[number]["prefix"];
+
+function getCategoryForSet(sets: SetOption[], setLabel: string): CategoryPrefix {
+  const set = sets.find((s) => s.label === setLabel);
+  if (set?.prefix) {
+    const cat = SET_CATEGORIES.find((c) => set.prefix === c.prefix);
+    if (cat) return cat.prefix;
+  }
+  return SET_CATEGORIES[0].prefix;
 }
 
-function getSetsForCategory(sets: SetOption[], prefix: string) {
-  return sets.filter((s) => s.set_id.startsWith(prefix));
+function getSetsForCategory(sets: SetOption[], prefix: CategoryPrefix) {
+  return sets.filter((s) => s.prefix === prefix && s.label !== null);
 }
 
 export function SearchFilter({
   sets = [],
   types = ["Leader", "Character", "Event", "Stage", "DON!!"],
   colors = ["Red", "Blue", "Green", "Purple", "Black", "Yellow"],
-  rarities = ["C", "UC", "R", "SR", "SEC", "L", "SP", "P"],
+  rarities = ["Common", "Uncommon", "Rare", "SuperRare", "SecretRare", "Leader", "Special"],
 }: SearchFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState(searchParams.get("q") || "");
-  const currentSetId = searchParams.get("set") || "OP-01";
-  const [activeCategory, setActiveCategory] = useState(getCategoryForSet(currentSetId));
+  const currentSetLabel = searchParams.get("set") || "OP-01";
+  const [activeCategory, setActiveCategory] = useState<CategoryPrefix>(
+    getCategoryForSet(sets, currentSetLabel)
+  );
 
   const createQueryString = useCallback(
     (params: Record<string, string | null>) => {
@@ -84,11 +95,11 @@ export function SearchFilter({
     });
   };
 
-  const handleCategoryChange = (prefix: (typeof SET_CATEGORIES)[number]["prefix"]) => {
+  const handleCategoryChange = (prefix: CategoryPrefix) => {
     setActiveCategory(prefix);
     const firstSet = getSetsForCategory(sets, prefix)[0];
-    if (firstSet) {
-      handleFilterChange("set", firstSet.set_id);
+    if (firstSet?.label) {
+      handleFilterChange("set", firstSet.label);
     }
   };
 
@@ -124,9 +135,9 @@ export function SearchFilter({
       <div className="flex flex-wrap gap-2">
         <Select
           value={activeCategory}
-          onValueChange={(v) => handleCategoryChange(v as (typeof SET_CATEGORIES)[number]["prefix"])}
+          onValueChange={(v) => handleCategoryChange(v as CategoryPrefix)}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -139,7 +150,7 @@ export function SearchFilter({
         </Select>
 
         <Select
-          value={currentSetId}
+          value={currentSetLabel}
           onValueChange={(value) => handleFilterChange("set", value)}
         >
           <SelectTrigger className="w-[200px]">
@@ -147,8 +158,8 @@ export function SearchFilter({
           </SelectTrigger>
           <SelectContent>
             {getSetsForCategory(sets, activeCategory).map((set) => (
-              <SelectItem key={set.set_id} value={set.set_id}>
-                {set.set_id} - {set.set_name}
+              <SelectItem key={set.id} value={set.label!}>
+                {set.label} - {set.name}
               </SelectItem>
             ))}
           </SelectContent>
