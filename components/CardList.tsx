@@ -3,7 +3,7 @@ import { SearchFilter } from "@/components/SearchFilter";
 import { createClient } from "@/lib/supabase/server";
 
 interface CardListProps {
-  selectedSetId: string;
+  selectedSet: string;
   searchQuery?: string;
   typeFilter?: string;
   colorFilter?: string;
@@ -11,7 +11,7 @@ interface CardListProps {
 }
 
 const CardList = async ({
-  selectedSetId,
+  selectedSet,
   searchQuery,
   typeFilter,
   colorFilter,
@@ -19,26 +19,51 @@ const CardList = async ({
 }: CardListProps) => {
   const supabase = await createClient();
 
+  // Resolve set param — could be a label (e.g. "OP-01") or a pack_id (e.g. "569901")
+  let resolvedSet: { id: string; label: string | null; name: string } | null = null;
+
+  const { data: byLabel } = await supabase
+    .from("sets")
+    .select("id, label, name")
+    .eq("label", selectedSet)
+    .single();
+
+  if (byLabel) {
+    resolvedSet = byLabel;
+  } else {
+    const { data: byId } = await supabase
+      .from("sets")
+      .select("id, label, name")
+      .eq("id", selectedSet)
+      .single();
+    resolvedSet = byId;
+  }
+
+  const packId = resolvedSet?.id;
+  const displayName = resolvedSet?.label ?? resolvedSet?.name ?? selectedSet;
+
   // Build query with filters
   let query = supabase
     .from("cards")
     .select("*")
-    .eq("set_id", selectedSetId)
-    .order("card_set_id");
+    .order("id");
 
-  // Apply filters at database level
+  if (packId) {
+    query = query.eq("pack_id", packId);
+  }
+
   if (searchQuery) {
     query = query.or(
-      `card_name.ilike.%${searchQuery}%,card_set_id.ilike.%${searchQuery}%,card_text.ilike.%${searchQuery}%`
+      `name.ilike.%${searchQuery}%,id.ilike.%${searchQuery}%,effect.ilike.%${searchQuery}%`
     );
   }
 
   if (typeFilter) {
-    query = query.eq("card_type", typeFilter);
+    query = query.eq("category", typeFilter);
   }
 
   if (colorFilter) {
-    query = query.ilike("card_color", `%${colorFilter}%`);
+    query = query.contains("colors", [colorFilter]);
   }
 
   if (rarityFilter) {
@@ -47,7 +72,7 @@ const CardList = async ({
 
   const [{ data: cards }, { data: sets }] = await Promise.all([
     query,
-    supabase.from("sets").select("set_id, set_name").order("set_id"),
+    supabase.from("sets").select("id, label, name, prefix").order("label"),
   ]);
 
   return (
@@ -58,7 +83,7 @@ const CardList = async ({
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">
-          {selectedSetId}{" "}
+          {displayName}{" "}
           <span className="text-muted-foreground">({cards?.length ?? 0} cards)</span>
         </h2>
       </div>
@@ -72,7 +97,7 @@ const CardList = async ({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {cards?.map((card) => (
-            <CardTile key={`${card.card_set_id}-${card.rarity}`} card={card} />
+            <CardTile key={`${card.id}-${card.rarity}`} card={card} />
           ))}
         </div>
       )}

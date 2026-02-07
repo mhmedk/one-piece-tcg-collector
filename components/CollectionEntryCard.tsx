@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Pencil, Trash2, Minus, Plus } from "lucide-react";
+import { Trash2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,27 +29,20 @@ interface CollectionEntryCardProps {
 }
 
 const rarityColors: Record<string, string> = {
-  C: "bg-gray-500",
-  UC: "bg-green-600",
-  R: "bg-blue-600",
-  SR: "bg-purple-600",
-  SEC: "bg-yellow-500 text-black",
-  L: "bg-orange-500",
-  SP: "bg-pink-500",
-  P: "bg-cyan-500",
+  Common: "bg-gray-500",
+  Uncommon: "bg-green-600",
+  Rare: "bg-blue-600",
+  SuperRare: "bg-purple-600",
+  SecretRare: "bg-yellow-500 text-black",
+  Leader: "bg-orange-500",
+  Special: "bg-pink-500",
+  Promo: "bg-cyan-500",
 };
 
 export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEntryCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-
-  const formattedValue = entry.card.market_price
-    ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(entry.card.market_price * entry.quantity)
-    : "N/A";
 
   const handleQuantityChange = async (delta: number) => {
     const newQuantity = entry.quantity + delta;
@@ -81,11 +74,11 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
         <CardContent className="p-0">
           <div className="flex gap-4">
             {/* Card Image */}
-            <Link href={`/cards/${entry.card.card_set_id}`} className="shrink-0">
+            <Link href={`/cards/${entry.card.id}`} className="shrink-0">
               <div className="relative h-32 w-24 overflow-hidden">
                 <Image
-                  src={entry.card.card_image}
-                  alt={entry.card.card_name}
+                  src={entry.card.img_url}
+                  alt={entry.card.name}
                   fill
                   sizes="96px"
                   className="object-cover"
@@ -98,12 +91,12 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <Link
-                    href={`/cards/${entry.card.card_set_id}`}
+                    href={`/cards/${entry.card.id}`}
                     className="font-medium hover:underline"
                   >
-                    {entry.card.card_name}
+                    {entry.card.name}
                   </Link>
-                  <p className="text-sm text-muted-foreground">{entry.card.card_set_id}</p>
+                  <p className="text-sm text-muted-foreground">{entry.card.id}</p>
                 </div>
                 <Badge className={rarityColors[entry.card.rarity] || "bg-gray-500"}>
                   {entry.card.rarity}
@@ -114,10 +107,6 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
                 <div>
                   <span className="text-muted-foreground">Condition: </span>
                   <span>{entry.condition}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Value: </span>
-                  <span className="text-green-500 font-medium">{formattedValue}</span>
                 </div>
               </div>
 
@@ -164,7 +153,7 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
           <AlertDialogHeader>
             <AlertDialogTitle>Remove from collection?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove &quot;{entry.card.card_name}&quot; from your collection. This action
+              This will remove &quot;{entry.card.name}&quot; from your collection. This action
               cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 
 interface SetOption {
-  set_id: string;
-  set_name: string;
+  id: string;
+  label: string | null;
+  name: string;
+  prefix: string | null;
 }
 
 interface SearchFilterProps {
@@ -25,34 +27,63 @@ interface SearchFilterProps {
   rarities?: string[];
 }
 
-const SET_CATEGORIES = [
-  { prefix: "OP", label: "Booster Packs" },
-  { prefix: "EB-", label: "Extra Boosters" },
-  { prefix: "ST-", label: "Starter Decks" },
-  { prefix: "PRB-", label: "Premium Boosters" },
-] as const;
-
-function getCategoryForSet(setId: string) {
-  return SET_CATEGORIES.find((c) => setId.startsWith(c.prefix))?.prefix ?? SET_CATEGORIES[0].prefix;
+interface SetCategory {
+  key: string;
+  prefixes: (string | null)[];
+  id?: string;
+  label: string;
 }
 
-function getSetsForCategory(sets: SetOption[], prefix: string) {
-  return sets.filter((s) => s.set_id.startsWith(prefix));
+const SET_CATEGORIES: SetCategory[] = [
+  { key: "booster", prefixes: ["BOOSTER PACK"], label: "Booster Packs" },
+  { key: "starter", prefixes: ["STARTER DECK", "STARTER DECK EX", "ULTRA DECK"], label: "Starter Decks" },
+  { key: "extra", prefixes: ["EXTRA BOOSTER"], label: "Extra Boosters" },
+  { key: "premium", prefixes: ["PREMIUM BOOSTER"], label: "Premium Boosters" },
+  { key: "promo", prefixes: [null], id: "569901", label: "Promotional" },
+  { key: "other", prefixes: [null], id: "569801", label: "Other" },
+];
+
+function getSetValue(set: SetOption): string {
+  return set.label ?? set.id;
+}
+
+function getSetsForCategory(sets: SetOption[], category: SetCategory): SetOption[] {
+  if (category.id) {
+    return sets.filter((s) => s.id === category.id);
+  }
+  return sets.filter((s) => category.prefixes.includes(s.prefix) && s.label !== null);
+}
+
+function getCategoryForSet(sets: SetOption[], setParam: string): string {
+  const set = sets.find((s) => s.label === setParam || s.id === setParam);
+  if (set) {
+    for (const cat of SET_CATEGORIES) {
+      if (cat.id && set.id === cat.id) return cat.key;
+      if (!cat.id && cat.prefixes.includes(set.prefix) && set.label !== null) return cat.key;
+    }
+  }
+  return SET_CATEGORIES[0].key;
 }
 
 export function SearchFilter({
   sets = [],
   types = ["Leader", "Character", "Event", "Stage", "DON!!"],
   colors = ["Red", "Blue", "Green", "Purple", "Black", "Yellow"],
-  rarities = ["C", "UC", "R", "SR", "SEC", "L", "SP", "P"],
+  rarities = ["Common", "Uncommon", "Rare", "SuperRare", "SecretRare", "Leader", "Special"],
 }: SearchFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState(searchParams.get("q") || "");
-  const currentSetId = searchParams.get("set") || "OP-01";
-  const [activeCategory, setActiveCategory] = useState(getCategoryForSet(currentSetId));
+  const currentSetParam = searchParams.get("set") || "OP-01";
+  const [activeCategoryKey, setActiveCategoryKey] = useState(
+    getCategoryForSet(sets, currentSetParam)
+  );
+
+  const activeCategory = SET_CATEGORIES.find((c) => c.key === activeCategoryKey) ?? SET_CATEGORIES[0];
+  const categorySets = getSetsForCategory(sets, activeCategory);
+  const isSingleSetCategory = !!activeCategory.id;
 
   const createQueryString = useCallback(
     (params: Record<string, string | null>) => {
@@ -84,11 +115,13 @@ export function SearchFilter({
     });
   };
 
-  const handleCategoryChange = (prefix: (typeof SET_CATEGORIES)[number]["prefix"]) => {
-    setActiveCategory(prefix);
-    const firstSet = getSetsForCategory(sets, prefix)[0];
+  const handleCategoryChange = (key: string) => {
+    setActiveCategoryKey(key);
+    const cat = SET_CATEGORIES.find((c) => c.key === key);
+    if (!cat) return;
+    const firstSet = getSetsForCategory(sets, cat)[0];
     if (firstSet) {
-      handleFilterChange("set", firstSet.set_id);
+      handleFilterChange("set", getSetValue(firstSet));
     }
   };
 
@@ -123,36 +156,38 @@ export function SearchFilter({
 
       <div className="flex flex-wrap gap-2">
         <Select
-          value={activeCategory}
-          onValueChange={(v) => handleCategoryChange(v as (typeof SET_CATEGORIES)[number]["prefix"])}
+          value={activeCategoryKey}
+          onValueChange={handleCategoryChange}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            {SET_CATEGORIES.filter((c) => getSetsForCategory(sets, c.prefix).length > 0).map((c) => (
-              <SelectItem key={c.prefix} value={c.prefix}>
+            {SET_CATEGORIES.filter((c) => getSetsForCategory(sets, c).length > 0).map((c) => (
+              <SelectItem key={c.key} value={c.key}>
                 {c.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Select
-          value={currentSetId}
-          onValueChange={(value) => handleFilterChange("set", value)}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Set" />
-          </SelectTrigger>
-          <SelectContent>
-            {getSetsForCategory(sets, activeCategory).map((set) => (
-              <SelectItem key={set.set_id} value={set.set_id}>
-                {set.set_id} - {set.set_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isSingleSetCategory && (
+          <Select
+            value={currentSetParam}
+            onValueChange={(value) => handleFilterChange("set", value)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Set" />
+            </SelectTrigger>
+            <SelectContent>
+              {categorySets.map((set) => (
+                <SelectItem key={set.id} value={getSetValue(set)}>
+                  {set.label} - {set.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select
           value={searchParams.get("type") || "all"}

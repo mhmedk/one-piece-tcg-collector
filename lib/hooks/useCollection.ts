@@ -22,12 +22,11 @@ export interface CollectionEntry {
   created_at: string;
   updated_at: string;
   card: {
-    card_set_id: string;
-    card_name: string;
-    card_image: string;
-    market_price: number | null;
+    id: string;
+    name: string;
+    img_url: string;
     rarity: string;
-    set_id: string;
+    pack_id: string;
   };
 }
 
@@ -118,10 +117,6 @@ export function useCollection() {
     ? {
         totalCards: data.entries.reduce((sum, e) => sum + e.quantity, 0),
         uniqueCards: data.entries.length,
-        totalValue: data.entries.reduce(
-          (sum, e) => sum + (e.card.market_price || 0) * e.quantity,
-          0
-        ),
         totalSpent: data.entries.reduce(
           (sum, e) => sum + (e.purchase_price || 0) * e.quantity,
           0

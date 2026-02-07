@@ -28,12 +28,11 @@ export async function GET() {
       created_at,
       updated_at,
       card:cards (
-        card_set_id,
-        card_name,
-        card_image,
-        market_price,
+        id,
+        name,
+        img_url,
         rarity,
-        set_id
+        pack_id
       )
     `
     )
@@ -72,11 +71,11 @@ export async function POST(request: Request) {
 
   const { cardId, quantity, condition, purchasePrice, notes } = parsed.data;
 
-  // First, find the card in the database by card_set_id
+  // Verify card exists
   const { data: card, error: cardError } = await (supabase as any)
     .from("cards")
     .select("id")
-    .eq("card_set_id", cardId)
+    .eq("id", cardId)
     .single();
 
   if (cardError || !card) {
@@ -88,7 +87,7 @@ export async function POST(request: Request) {
     .from("collection_entries")
     .select("id, quantity")
     .eq("user_id", user.id)
-    .eq("card_id", card.id)
+    .eq("card_id", cardId)
     .eq("condition", condition)
     .single();
 
@@ -114,7 +113,7 @@ export async function POST(request: Request) {
     .from("collection_entries")
     .insert({
       user_id: user.id,
-      card_id: card.id,
+      card_id: cardId,
       quantity,
       condition,
       purchase_price: purchasePrice || null,

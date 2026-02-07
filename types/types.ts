@@ -1,26 +1,25 @@
 export interface SetType {
-  set_id: string;
-  set_name: string;
+  id: string;
+  label: string | null;
+  name: string;
+  prefix: string | null;
 }
 
 export interface CardType {
-  inventory_price: number;
-  market_price: number;
-  card_name: string;
-  set_name: string;
-  card_text: string;
-  set_id: string;
+  id: string;
+  pack_id: string;
+  name: string;
   rarity: string;
-  card_set_id: string;
-  card_color: string;
-  card_type: string;
-  life: string;
-  card_cost: string;
-  card_power: string;
-  sub_types: string;
-  counter_amount: number;
-  attribute: string;
-  date_scraped: string;
-  card_image_id: string;
-  card_image: string;
+  category: string;
+  colors: string[];
+  cost: number | null;
+  power: number | null;
+  counter: number | null;
+  life: number | null;
+  attributes: string[];
+  types: string[];
+  effect: string | null;
+  trigger_text: string | null;
+  img_url: string;
+  block_number: number | null;
 }

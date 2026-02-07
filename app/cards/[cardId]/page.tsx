@@ -14,14 +14,14 @@ interface PageProps {
 }
 
 const rarityColors: Record<string, string> = {
-  C: "bg-gray-500",
-  UC: "bg-green-600",
-  R: "bg-blue-600",
-  SR: "bg-purple-600",
-  SEC: "bg-yellow-500 text-black",
-  L: "bg-orange-500",
-  SP: "bg-pink-500",
-  P: "bg-cyan-500",
+  Common: "bg-gray-500",
+  Uncommon: "bg-green-600",
+  Rare: "bg-blue-600",
+  SuperRare: "bg-purple-600",
+  SecretRare: "bg-yellow-500 text-black",
+  Leader: "bg-orange-500",
+  Special: "bg-pink-500",
+  Promo: "bg-cyan-500",
 };
 
 async function getCard(cardId: string) {
@@ -29,8 +29,8 @@ async function getCard(cardId: string) {
 
   const { data: card, error } = await supabase
     .from("cards")
-    .select("*")
-    .eq("card_set_id", cardId)
+    .select("*, sets(id, label, name)")
+    .eq("id", cardId)
     .single();
 
   if (error || !card) return null;
@@ -45,36 +45,28 @@ export default async function CardDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const formattedMarketPrice = card.market_price
-    ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(card.market_price)
-    : "N/A";
-
-  const formattedInventoryPrice = card.inventory_price
-    ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(card.inventory_price)
-    : "N/A";
+  const set = card.sets as unknown as { id: string; label: string | null; name: string } | null;
+  const setParam = set?.label ?? set?.id;
+  const setDisplayName = set?.label ?? set?.name;
 
   return (
     <main className="container-main py-8">
-      <Link href={`/?set=${card.set_id}`}>
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to {card.set_id}
-        </Button>
-      </Link>
+      {setParam && (
+        <Link href={`/?set=${setParam}`}>
+          <Button variant="ghost" className="mb-6">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to {setDisplayName}
+          </Button>
+        </Link>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
         {/* Card Image */}
         <div className="flex justify-center">
           <div className="overflow-hidden rounded-xl shadow-2xl">
             <Image
-              src={card.card_image}
-              alt={card.card_name}
+              src={card.img_url}
+              alt={card.name}
               width={600}
               height={838}
               priority
@@ -87,12 +79,12 @@ export default async function CardDetailPage({ params }: PageProps) {
         <div className="space-y-6">
           <div>
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-3xl font-bold">{card.card_name}</h1>
+              <h1 className="text-3xl font-bold">{card.name}</h1>
               <Badge className={rarityColors[card.rarity] || "bg-gray-500"}>
                 {card.rarity}
               </Badge>
             </div>
-            <p className="text-muted-foreground mt-1">{card.card_set_id}</p>
+            <p className="text-muted-foreground mt-1">{card.id}</p>
           </div>
 
           <Card>
@@ -102,90 +94,86 @@ export default async function CardDetailPage({ params }: PageProps) {
             <CardContent className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Type</p>
-                  <p className="font-medium">{card.card_type}</p>
+                  <p className="text-sm text-muted-foreground">Category</p>
+                  <p className="font-medium">{card.category}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Color</p>
-                  <p className="font-medium">{card.card_color}</p>
+                  <p className="font-medium">{card.colors.join(" / ")}</p>
                 </div>
-                {card.card_cost && (
+                {card.cost !== null && (
                   <div>
                     <p className="text-sm text-muted-foreground">Cost</p>
-                    <p className="font-medium">{card.card_cost}</p>
+                    <p className="font-medium">{card.cost}</p>
                   </div>
                 )}
-                {card.card_power && (
+                {card.power !== null && (
                   <div>
                     <p className="text-sm text-muted-foreground">Power</p>
-                    <p className="font-medium">{card.card_power}</p>
+                    <p className="font-medium">{card.power}</p>
                   </div>
                 )}
-                {card.life && (
+                {card.life !== null && (
                   <div>
                     <p className="text-sm text-muted-foreground">Life</p>
                     <p className="font-medium">{card.life}</p>
                   </div>
                 )}
-                {card.counter_amount !== null && card.counter_amount > 0 && (
+                {card.counter !== null && card.counter > 0 && (
                   <div>
                     <p className="text-sm text-muted-foreground">Counter</p>
-                    <p className="font-medium">+{card.counter_amount}</p>
+                    <p className="font-medium">+{card.counter}</p>
                   </div>
                 )}
-                {card.attribute && (
+                {card.attributes.length > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Attribute</p>
-                    <p className="font-medium">{card.attribute}</p>
+                    <p className="text-sm text-muted-foreground">Attributes</p>
+                    <p className="font-medium">{card.attributes.join(" / ")}</p>
                   </div>
                 )}
-                {card.sub_types && (
+                {card.types.length > 0 && (
                   <div className="col-span-2">
-                    <p className="text-sm text-muted-foreground">Sub Types</p>
-                    <p className="font-medium">{card.sub_types}</p>
+                    <p className="text-sm text-muted-foreground">Types</p>
+                    <p className="font-medium">{card.types.join(" / ")}</p>
                   </div>
                 )}
               </div>
 
-              {card.card_text && (
+              {card.effect && (
                 <>
                   <Separator />
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Effect</p>
-                    <p className="text-sm leading-relaxed">{card.card_text}</p>
+                    <p
+                      className="text-sm leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: card.effect.replace(/<br\s*\/?>/gi, "<br />"),
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {card.trigger_text && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Trigger</p>
+                    <p
+                      className="text-sm leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: card.trigger_text.replace(/<br\s*\/?>/gi, "<br />"),
+                      }}
+                    />
                   </div>
                 </>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Pricing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Market Price</p>
-                  <p className="text-2xl font-bold text-green-500">
-                    {formattedMarketPrice}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Inventory Price
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {formattedInventoryPrice}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <AddToCollectionButton
-            cardId={card.card_set_id}
-            cardName={card.card_name}
+            cardId={card.id}
+            cardName={card.name}
           />
         </div>
       </div>
