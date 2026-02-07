@@ -32,7 +32,9 @@ export async function GET() {
         name,
         img_url,
         rarity,
-        pack_id
+        pack_id,
+        colors,
+        category
       )
     `
     )

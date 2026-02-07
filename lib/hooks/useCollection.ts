@@ -27,6 +27,8 @@ export interface CollectionEntry {
     img_url: string;
     rarity: string;
     pack_id: string;
+    colors: string[];
+    category: string;
   };
 }
 
