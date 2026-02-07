@@ -29,7 +29,7 @@ async function getCard(cardId: string) {
 
   const { data: card, error } = await supabase
     .from("cards")
-    .select("*, sets(label)")
+    .select("*, sets(id, label, name)")
     .eq("id", cardId)
     .single();
 
@@ -45,15 +45,17 @@ export default async function CardDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const setLabel = (card.sets as unknown as { label: string | null })?.label;
+  const set = card.sets as unknown as { id: string; label: string | null; name: string } | null;
+  const setParam = set?.label ?? set?.id;
+  const setDisplayName = set?.label ?? set?.name;
 
   return (
     <main className="container-main py-8">
-      {setLabel && (
-        <Link href={`/?set=${setLabel}`}>
+      {setParam && (
+        <Link href={`/?set=${setParam}`}>
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to {setLabel}
+            Back to {setDisplayName}
           </Button>
         </Link>
       )}

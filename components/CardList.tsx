@@ -3,7 +3,7 @@ import { SearchFilter } from "@/components/SearchFilter";
 import { createClient } from "@/lib/supabase/server";
 
 interface CardListProps {
-  selectedSetLabel: string;
+  selectedSet: string;
   searchQuery?: string;
   typeFilter?: string;
   colorFilter?: string;
@@ -11,7 +11,7 @@ interface CardListProps {
 }
 
 const CardList = async ({
-  selectedSetLabel,
+  selectedSet,
   searchQuery,
   typeFilter,
   colorFilter,
@@ -19,14 +19,28 @@ const CardList = async ({
 }: CardListProps) => {
   const supabase = await createClient();
 
-  // Resolve set label to pack_id
-  const { data: selectedSet } = await supabase
+  // Resolve set param — could be a label (e.g. "OP-01") or a pack_id (e.g. "569901")
+  let resolvedSet: { id: string; label: string | null; name: string } | null = null;
+
+  const { data: byLabel } = await supabase
     .from("sets")
-    .select("id, label")
-    .eq("label", selectedSetLabel)
+    .select("id, label, name")
+    .eq("label", selectedSet)
     .single();
 
-  const packId = selectedSet?.id;
+  if (byLabel) {
+    resolvedSet = byLabel;
+  } else {
+    const { data: byId } = await supabase
+      .from("sets")
+      .select("id, label, name")
+      .eq("id", selectedSet)
+      .single();
+    resolvedSet = byId;
+  }
+
+  const packId = resolvedSet?.id;
+  const displayName = resolvedSet?.label ?? resolvedSet?.name ?? selectedSet;
 
   // Build query with filters
   let query = supabase
@@ -69,7 +83,7 @@ const CardList = async ({
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">
-          {selectedSetLabel}{" "}
+          {displayName}{" "}
           <span className="text-muted-foreground">({cards?.length ?? 0} cards)</span>
         </h2>
       </div>
