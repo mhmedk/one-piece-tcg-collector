@@ -1,16 +1,13 @@
 "use client";
 
 import useSWR from "swr";
+import {
+  getCollectionEntries,
+  addToCollection,
+  updateCollectionEntry,
+  deleteCollectionEntry,
+} from "@/lib/actions/collection";
 import type { AddToCollectionData, UpdateCollectionEntryData } from "@/lib/schemas/collection";
-
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || "Failed to fetch");
-  }
-  return res.json();
-};
 
 export interface CollectionEntry {
   id: string;
@@ -32,30 +29,27 @@ export interface CollectionEntry {
   };
 }
 
+const COLLECTION_KEY = "collection";
+
 export function useCollection() {
   const { data, error, isLoading, mutate } = useSWR<{ entries: CollectionEntry[] }>(
-    "/api/collection",
-    fetcher
+    COLLECTION_KEY,
+    async () => {
+      const result = await getCollectionEntries();
+      if (result.error) throw new Error(result.error);
+      return { entries: result.entries as CollectionEntry[] };
+    },
+    { revalidateOnFocus: false }
   );
 
   const addEntry = async (newData: AddToCollectionData) => {
-    const res = await fetch("/api/collection", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newData),
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || "Failed to add to collection");
-    }
-
+    const result = await addToCollection(newData);
+    if (result.error) throw new Error(result.error);
     await mutate();
-    return res.json();
+    return result;
   };
 
   const updateEntry = async (entryId: string, updateData: UpdateCollectionEntryData) => {
-    // Optimistic update for quantity changes
     const optimisticData = data
       ? {
           entries: data.entries.map((e) =>
@@ -66,50 +60,33 @@ export function useCollection() {
 
     await mutate(
       async () => {
-        const res = await fetch(`/api/collection/${entryId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updateData),
-        });
-
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to update entry");
-        }
-
-        return res.json();
+        const result = await updateCollectionEntry(entryId, updateData);
+        if (result.error) throw new Error(result.error);
+        return optimisticData;
       },
       {
         optimisticData,
         rollbackOnError: true,
-        revalidate: true,
+        revalidate: false,
       }
     );
   };
 
   const deleteEntry = async (entryId: string) => {
-    // Optimistic delete
     const optimisticData = data
       ? { entries: data.entries.filter((e) => e.id !== entryId) }
       : undefined;
 
     await mutate(
       async () => {
-        const res = await fetch(`/api/collection/${entryId}`, {
-          method: "DELETE",
-        });
-
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to delete entry");
-        }
-
-        return res.json();
+        const result = await deleteCollectionEntry(entryId);
+        if (result.error) throw new Error(result.error);
+        return optimisticData;
       },
       {
         optimisticData,
         rollbackOnError: true,
-        revalidate: true,
+        revalidate: false,
       }
     );
   };
