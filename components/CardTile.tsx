@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { Card } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAddToCollection } from "@/components/AddToCollectionProvider";
 import { cn } from "@/lib/utils";
 
 interface CardTileProps {
@@ -22,6 +25,8 @@ const rarityColors: Record<string, string> = {
 };
 
 export function CardTile({ card }: CardTileProps) {
+  const { openAddDialog } = useAddToCollection();
+
   return (
     <Link
       href={`/cards/${card.id}`}
@@ -46,6 +51,20 @@ export function CardTile({ card }: CardTileProps) {
         >
           {card.rarity}
         </Badge>
+
+        {/* Add to collection button */}
+        <Button
+          size="icon"
+          variant="secondary"
+          className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openAddDialog(card.id, card.name);
+          }}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
 
         {/* Card info on hover */}
         <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full transition-transform group-hover:translate-y-0">

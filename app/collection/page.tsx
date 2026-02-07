@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useCollection } from "@/lib/hooks/useCollection";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { CollectionEntryCard } from "@/components/CollectionEntryCard";
-import { CollectionEntryForm } from "@/components/CollectionEntryForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -34,35 +31,8 @@ function CollectionSkeleton() {
 }
 
 export default function CollectionPage() {
-  const searchParams = useSearchParams();
-  const addCardId = searchParams.get("add");
-
-  const { user, loading: authLoading } = useAuth();
-  const { entries, stats, isLoading, addEntry, updateEntry, deleteEntry } = useCollection();
-
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [addingCard, setAddingCard] = useState<{ id: string; name: string } | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Handle ?add=cardId query param
-  useEffect(() => {
-    if (addCardId && user) {
-      setAddingCard({ id: addCardId, name: addCardId });
-      setShowAddDialog(true);
-    }
-  }, [addCardId, user]);
-
-  const handleAddToCollection = async (data: Parameters<typeof addEntry>[0]) => {
-    setIsSubmitting(true);
-    try {
-      await addEntry(data);
-      toast.success("Card added to collection!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add card");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const { loading: authLoading } = useAuth();
+  const { entries, stats, isLoading, updateEntry, deleteEntry } = useCollection();
 
   const handleUpdate = async (entryId: string, data: { quantity?: number }) => {
     try {
@@ -164,17 +134,6 @@ export default function CollectionPage() {
         </div>
       )}
 
-      {/* Add to Collection Dialog */}
-      {addingCard && (
-        <CollectionEntryForm
-          cardId={addingCard.id}
-          cardName={addingCard.name}
-          open={showAddDialog}
-          onOpenChange={setShowAddDialog}
-          onSubmit={handleAddToCollection}
-          isLoading={isSubmitting}
-        />
-      )}
     </main>
   );
 }

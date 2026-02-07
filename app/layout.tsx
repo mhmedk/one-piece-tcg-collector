@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Oswald, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AddToCollectionProvider } from "@/components/AddToCollectionProvider";
 import { Header } from "@/components/Header";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -31,9 +32,11 @@ export default function RootLayout({
         className={`${sourceSans3.className} ${oswald.variable} min-h-screen antialiased bg-background text-foreground`}
       >
         <ThemeProvider>
-          <Header />
-          {children}
-          <Toaster />
+          <AddToCollectionProvider>
+            <Header />
+            {children}
+            <Toaster />
+          </AddToCollectionProvider>
         </ThemeProvider>
       </body>
     </html>
