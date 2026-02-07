@@ -1,16 +1,15 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
-import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCollectionButton } from "./AddToCollectionButton";
+import { BackButton } from "./BackButton";
 
 interface PageProps {
   params: Promise<{ cardId: string }>;
+  searchParams: Promise<{ from?: string }>;
 }
 
 const rarityColors: Record<string, string> = {
@@ -37,8 +36,9 @@ async function getCard(cardId: string) {
   return card;
 }
 
-export default async function CardDetailPage({ params }: PageProps) {
+export default async function CardDetailPage({ params, searchParams }: PageProps) {
   const { cardId } = await params;
+  const { from } = await searchParams;
   const card = await getCard(cardId);
 
   if (!card) {
@@ -51,13 +51,8 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   return (
     <main className="container-main py-8">
-      {setParam && (
-        <Link href={`/?set=${setParam}`}>
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to {setDisplayName}
-          </Button>
-        </Link>
+      {setParam && setDisplayName && (
+        <BackButton setParam={setParam} setDisplayName={setDisplayName} from={from} />
       )}
 
       <div className="grid gap-8 lg:grid-cols-[auto_1fr]">

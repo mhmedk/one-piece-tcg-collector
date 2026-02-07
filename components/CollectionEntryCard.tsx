@@ -82,8 +82,8 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
     <>
       <div className="group flex items-center gap-4 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50">
         {/* Card Image */}
-        <Link href={`/cards/${entry.card.id}`} className="shrink-0">
-          <div className="relative h-20 w-14 overflow-hidden rounded-md bg-muted">
+        <Link href={`/cards/${entry.card.id}?from=collection`} className="shrink-0">
+          <div className="relative h-20 w-14 overflow-hidden bg-muted">
             <Image
               src={entry.card.img_url}
               alt={entry.card.name}
@@ -98,7 +98,7 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
-              href={`/cards/${entry.card.id}`}
+              href={`/cards/${entry.card.id}?from=collection`}
               className="truncate font-medium hover:underline"
             >
               {entry.card.name}

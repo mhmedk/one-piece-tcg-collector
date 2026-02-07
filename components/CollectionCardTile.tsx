@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Trash2, Minus, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,27 +37,47 @@ const rarityColors: Record<string, string> = {
 };
 
 export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCardTileProps) {
+  const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [localQuantity, setLocalQuantity] = useState(entry.quantity);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleQuantityChange = async (e: React.MouseEvent, delta: number) => {
-    e.preventDefault();
+  // Sync local quantity when SWR data changes (after server confirm or rollback)
+  useEffect(() => {
+    setLocalQuantity(entry.quantity);
+  }, [entry.quantity]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const flushUpdate = useCallback(
+    (quantity: number) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        onUpdate(entry.id, { quantity });
+      }, 300);
+    },
+    [entry.id, onUpdate]
+  );
+
+  const handleQuantityChange = (e: React.MouseEvent, delta: number) => {
     e.stopPropagation();
-    const newQuantity = entry.quantity + delta;
+    const newQuantity = localQuantity + delta;
     if (newQuantity < 1) {
       setShowDeleteDialog(true);
       return;
     }
-    setIsUpdating(true);
-    try {
-      await onUpdate(entry.id, { quantity: newQuantity });
-    } finally {
-      setIsUpdating(false);
-    }
+    setLocalQuantity(newQuantity);
+    flushUpdate(newQuantity);
   };
 
   const handleDelete = async () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setIsDeleting(true);
     try {
       await onDelete(entry.id);
@@ -69,9 +89,17 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
 
   return (
     <>
-      <Link
-        href={`/cards/${entry.card.id}`}
-        className="group relative block overflow-hidden rounded-lg transition-transform hover:scale-[1.02]"
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => router.push(`/cards/${entry.card.id}?from=collection`)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            router.push(`/cards/${entry.card.id}?from=collection`);
+          }
+        }}
+        className="group relative block cursor-pointer overflow-hidden rounded-lg transition-transform hover:scale-[1.02]"
       >
         <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-lg bg-muted">
           <Image
@@ -85,7 +113,7 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
 
           {/* Quantity badge */}
           <div className="absolute top-2 left-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-black/70 px-2 text-sm font-bold text-white">
-            &times;{entry.quantity}
+            &times;{localQuantity}
           </div>
 
           {/* Rarity badge */}
@@ -104,13 +132,15 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
           </div>
 
           {/* Hover actions */}
-          <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div
+            className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               variant="secondary"
               size="icon"
               className="h-8 w-8 rounded-full"
               onClick={(e) => handleQuantityChange(e, -1)}
-              disabled={isUpdating}
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -119,7 +149,6 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
               size="icon"
               className="h-8 w-8 rounded-full"
               onClick={(e) => handleQuantityChange(e, 1)}
-              disabled={isUpdating}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -128,7 +157,6 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
               size="icon"
               className="h-8 w-8 rounded-full text-destructive"
               onClick={(e) => {
-                e.preventDefault();
                 e.stopPropagation();
                 setShowDeleteDialog(true);
               }}
@@ -143,7 +171,7 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
             <p className="text-xs text-white/80">{entry.card.id}</p>
           </div>
         </div>
-      </Link>
+      </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
