@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -102,12 +102,24 @@ export function SearchFilter({
     [searchParams]
   );
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    startTransition(() => {
-      router.push(`/?${createQueryString({ q: search || null })}`);
-    });
-  };
+  // Keep a stable ref to createQueryString so the effect only re-runs on `search`
+  const createQueryStringRef = useRef(createQueryString);
+  createQueryStringRef.current = createQueryString;
+
+  // Debounced auto-search on typing
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      startTransition(() => {
+        router.push(`/?${createQueryStringRef.current({ q: search || null })}`);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, router, startTransition]);
 
   const handleFilterChange = (key: string, value: string) => {
     startTransition(() => {
@@ -137,115 +149,108 @@ export function SearchFilter({
                      searchParams.has("color") || searchParams.has("rarity");
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search cards..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Button type="submit" disabled={isPending}>
-          Search
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+      <Select
+        value={activeCategoryKey}
+        onValueChange={handleCategoryChange}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Category" />
+        </SelectTrigger>
+        <SelectContent>
+          {SET_CATEGORIES.filter((c) => getSetsForCategory(sets, c).length > 0).map((c) => (
+            <SelectItem key={c.key} value={c.key}>
+              {c.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {!isSingleSetCategory && (
+        <Select
+          value={currentSetParam}
+          onValueChange={(value) => handleFilterChange("set", value)}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Set" />
+          </SelectTrigger>
+          <SelectContent>
+            {categorySets.map((set) => (
+              <SelectItem key={set.id} value={getSetValue(set)}>
+                {set.label} - {set.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      <Select
+        value={searchParams.get("type") || "all"}
+        onValueChange={(value) => handleFilterChange("type", value)}
+      >
+        <SelectTrigger className="w-[140px]">
+          <SelectValue placeholder="Card Type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Types</SelectItem>
+          {types.map((type) => (
+            <SelectItem key={type} value={type}>
+              {type}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={searchParams.get("color") || "all"}
+        onValueChange={(value) => handleFilterChange("color", value)}
+      >
+        <SelectTrigger className="w-[140px]">
+          <SelectValue placeholder="Color" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Colors</SelectItem>
+          {colors.map((color) => (
+            <SelectItem key={color} value={color}>
+              {color}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={searchParams.get("rarity") || "all"}
+        onValueChange={(value) => handleFilterChange("rarity", value)}
+      >
+        <SelectTrigger className="w-[140px]">
+          <SelectValue placeholder="Rarity" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Rarities</SelectItem>
+          {rarities.map((rarity) => (
+            <SelectItem key={rarity} value={rarity}>
+              {rarity}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {hasFilters && (
+        <Button variant="ghost" size="icon" onClick={clearFilters}>
+          <X className="h-4 w-4" />
+          <span className="sr-only">Clear filters</span>
         </Button>
-      </form>
+      )}
 
-      <div className="flex flex-wrap gap-2">
-        <Select
-          value={activeCategoryKey}
-          onValueChange={handleCategoryChange}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            {SET_CATEGORIES.filter((c) => getSetsForCategory(sets, c).length > 0).map((c) => (
-              <SelectItem key={c.key} value={c.key}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {!isSingleSetCategory && (
-          <Select
-            value={currentSetParam}
-            onValueChange={(value) => handleFilterChange("set", value)}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Set" />
-            </SelectTrigger>
-            <SelectContent>
-              {categorySets.map((set) => (
-                <SelectItem key={set.id} value={getSetValue(set)}>
-                  {set.label} - {set.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        <Select
-          value={searchParams.get("type") || "all"}
-          onValueChange={(value) => handleFilterChange("type", value)}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Card Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {types.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={searchParams.get("color") || "all"}
-          onValueChange={(value) => handleFilterChange("color", value)}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Color" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Colors</SelectItem>
-            {colors.map((color) => (
-              <SelectItem key={color} value={color}>
-                {color}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={searchParams.get("rarity") || "all"}
-          onValueChange={(value) => handleFilterChange("rarity", value)}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Rarity" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Rarities</SelectItem>
-            {rarities.map((rarity) => (
-              <SelectItem key={rarity} value={rarity}>
-                {rarity}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {hasFilters && (
-          <Button variant="ghost" size="icon" onClick={clearFilters}>
-            <X className="h-4 w-4" />
-            <span className="sr-only">Clear filters</span>
-          </Button>
-        )}
+      {/* Search — pushed to the right on desktop */}
+      <div className="relative sm:ml-auto min-w-[200px] flex-1 sm:max-w-xs">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, ID, or effect..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
       </div>
     </div>
   );

@@ -3,13 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Trash2, Minus, Plus } from "lucide-react";
+import { Trash2, Minus, Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 import type { CollectionEntry } from "@/lib/hooks/useCollection";
 
 interface CollectionEntryCardProps {
@@ -68,85 +65,105 @@ export function CollectionEntryCard({ entry, onUpdate, onDelete }: CollectionEnt
     }
   };
 
+  const formattedDate = new Date(entry.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const formattedPrice = entry.purchase_price
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(entry.purchase_price)
+    : null;
+
   return (
     <>
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          <div className="flex gap-4">
-            {/* Card Image */}
-            <Link href={`/cards/${entry.card.id}`} className="shrink-0">
-              <div className="relative h-32 w-24 overflow-hidden">
-                <Image
-                  src={entry.card.img_url}
-                  alt={entry.card.name}
-                  fill
-                  sizes="96px"
-                  className="object-cover"
-                />
-              </div>
-            </Link>
-
-            {/* Card Info */}
-            <div className="flex-1 py-3 pr-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <Link
-                    href={`/cards/${entry.card.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {entry.card.name}
-                  </Link>
-                  <p className="text-sm text-muted-foreground">{entry.card.id}</p>
-                </div>
-                <Badge className={rarityColors[entry.card.rarity] || "bg-gray-500"}>
-                  {entry.card.rarity}
-                </Badge>
-              </div>
-
-              <div className="mt-2 flex items-center gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Condition: </span>
-                  <span>{entry.condition}</span>
-                </div>
-              </div>
-
-              {/* Quantity Controls */}
-              <div className="mt-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleQuantityChange(-1)}
-                    disabled={isUpdating}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-8 text-center font-medium">{entry.quantity}</span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleQuantityChange(1)}
-                    disabled={isUpdating}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+      <div className="group flex items-center gap-4 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50">
+        {/* Card Image */}
+        <Link href={`/cards/${entry.card.id}`} className="shrink-0">
+          <div className="relative h-20 w-14 overflow-hidden rounded-md bg-muted">
+            <Image
+              src={entry.card.img_url}
+              alt={entry.card.name}
+              fill
+              sizes="56px"
+              className="object-cover"
+            />
           </div>
-        </CardContent>
-      </Card>
+        </Link>
+
+        {/* Name + ID + Rarity */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/cards/${entry.card.id}`}
+              className="truncate font-medium hover:underline"
+            >
+              {entry.card.name}
+            </Link>
+            <Badge
+              variant="secondary"
+              className={cn(
+                "shrink-0 text-xs",
+                rarityColors[entry.card.rarity] || "bg-gray-500"
+              )}
+            >
+              {entry.card.rarity}
+            </Badge>
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+            <span>{entry.card.id}</span>
+            <span>{entry.condition}</span>
+            {formattedPrice && <span>{formattedPrice}</span>}
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {formattedDate}
+            </span>
+          </div>
+          {entry.notes && (
+            <p className="mt-1 truncate text-xs text-muted-foreground italic">
+              {entry.notes}
+            </p>
+          )}
+        </div>
+
+        {/* Quantity Controls */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => handleQuantityChange(-1)}
+            disabled={isUpdating}
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </Button>
+          <span className="w-7 text-center text-sm font-semibold tabular-nums">
+            {entry.quantity}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => handleQuantityChange(1)}
+            disabled={isUpdating}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {/* Delete */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={() => setShowDeleteDialog(true)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

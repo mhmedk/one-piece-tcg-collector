@@ -56,7 +56,7 @@ export function CardTile({ card }: CardTileProps) {
         <Button
           size="icon"
           variant="secondary"
-          className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10"
+          className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 z-10 hover:bg-primary hover:text-primary-foreground hover:scale-110"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
