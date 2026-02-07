@@ -16,16 +16,18 @@ export function useAuth() {
       return;
     }
 
-    // Get initial session
-    const getUser = async () => {
+    // Get initial session from local storage (no network request).
+    // The middleware already refreshes the token server-side via getUser(),
+    // so we can safely read the cached session here to avoid timeout errors.
+    const initSession = async () => {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
       setLoading(false);
     };
 
-    getUser();
+    initSession();
 
     // Listen for auth changes
     const {
