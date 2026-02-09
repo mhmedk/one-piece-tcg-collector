@@ -75,6 +75,14 @@ const CardList = async ({
     supabase.from("sets").select("id, label, name, prefix").order("label"),
   ]);
 
+  // Sort: Special rarity cards always at the end, preserve ID order within each group
+  const sortedCards = cards
+    ? [...cards].sort((a, b) => {
+        const order: Record<string, number> = { "Special": 1, "TreasureRare": 2 };
+        return (order[a.rarity] ?? 0) - (order[b.rarity] ?? 0) || a.id.localeCompare(b.id);
+      })
+    : [];
+
   return (
     <section className="flex-1 py-6 px-4 lg:px-8">
       <div className="mb-6">
@@ -88,7 +96,7 @@ const CardList = async ({
         </h2>
       </div>
 
-      {!cards || cards.length === 0 ? (
+      {!sortedCards || sortedCards.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             No cards found matching your filters.
@@ -96,7 +104,7 @@ const CardList = async ({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {cards?.map((card) => (
+          {sortedCards.map((card) => (
             <CardTile key={`${card.id}-${card.rarity}`} card={card} />
           ))}
         </div>
