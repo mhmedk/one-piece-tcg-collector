@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "en.onepiece-cardgame.com",
+        hostname: "splzhikuvhxalnttksqz.supabase.co",
       },
     ],
   },
