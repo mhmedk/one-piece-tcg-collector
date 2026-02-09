@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
+import * as sharp from "sharp";
 
 const BATCH_SIZE = 500;
+const STORAGE_BUCKET = "card-images";
+const STORAGE_BASE_URL = "https://splzhikuvhxalnttksqz.supabase.co/storage/v1/object/public/card-images";
+const IMAGE_CONCURRENCY = 10;
+const WEBP_QUALITY = 80;
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -43,6 +48,84 @@ interface VegapullCard {
   img_url: string;
   img_full_url: string;
   block_number?: number | null;
+}
+
+function getWebpFilename(imgFullUrl: string): string {
+  return imgFullUrl.split("/").pop()!.split("?")[0].replace(".png", ".webp");
+}
+
+async function uploadMissingImages(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  cards: VegapullCard[]
+) {
+  // List existing files in the bucket
+  const existingFiles = new Set<string>();
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .list("", { limit: 1000, offset });
+    if (error) {
+      console.error("Failed to list storage files:", error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    for (const file of data) existingFiles.add(file.name);
+    offset += data.length;
+  }
+  console.log(`Existing images in storage: ${existingFiles.size}`);
+
+  // Find cards whose image is not yet uploaded
+  const missing = cards.filter(
+    (card) => !existingFiles.has(getWebpFilename(card.img_full_url))
+  );
+  if (missing.length === 0) {
+    console.log("All card images already in storage, skipping upload.");
+    return;
+  }
+  console.log(`Uploading ${missing.length} missing card images...`);
+
+  let done = 0;
+  let errors = 0;
+  const queue = [...missing];
+
+  async function worker() {
+    while (queue.length > 0) {
+      const card = queue.shift()!;
+      const filename = getWebpFilename(card.img_full_url);
+      try {
+        const res = await fetch(card.img_full_url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const pngBuffer = Buffer.from(await res.arrayBuffer());
+        const webpBuffer = await sharp(pngBuffer)
+          .webp({ quality: WEBP_QUALITY })
+          .toBuffer();
+
+        const { error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(filename, webpBuffer, {
+            contentType: "image/webp",
+            cacheControl: "31536000",
+            upsert: false,
+          });
+        if (error) throw error;
+      } catch (err) {
+        console.error(`  Failed: ${filename} - ${err}`);
+        errors++;
+      }
+      done++;
+      if (done % 50 === 0 || done === missing.length) {
+        console.log(`  Images: ${done}/${missing.length} (${errors} errors)`);
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: IMAGE_CONCURRENCY }, () => worker())
+  );
+  console.log(
+    `Image upload complete: ${done - errors} uploaded, ${errors} errors`
+  );
 }
 
 async function main() {
@@ -109,6 +192,9 @@ async function main() {
   }
   console.log(`Sets upserted successfully`);
 
+  // Upload missing card images to Supabase Storage
+  await uploadMissingImages(supabase, uniqueCards);
+
   // Transform and upsert cards — use img_full_url, normalize effect
   const cardRows = uniqueCards.map((card) => ({
     id: card.id,
@@ -125,7 +211,7 @@ async function main() {
     types: card.types,
     effect: card.effect === "-" ? null : card.effect,
     trigger_text: card.trigger,
-    img_url: card.img_full_url,
+    img_url: `${STORAGE_BASE_URL}/${getWebpFilename(card.img_full_url)}`,
     block_number: card.block_number ?? null,
   }));
 
