@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
-import * as sharp from "sharp";
+import sharp from "sharp";
 
 const BATCH_SIZE = 500;
 const STORAGE_BUCKET = "card-images";
