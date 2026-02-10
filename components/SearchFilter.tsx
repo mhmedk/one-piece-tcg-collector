@@ -38,7 +38,7 @@ interface SetCategory {
 
 const SET_CATEGORIES: SetCategory[] = [
   { key: "all", prefixes: [], label: "All Cards" },
-  { key: "booster", prefixes: ["BOOSTER PACK", "EXTRA BOOSTER", "PREMIUM BOOSTER"], label: "Boosters" },
+  { key: "booster", prefixes: ["BOOSTER PACK", "EXTRA BOOSTER", "PREMIUM BOOSTER"], label: "Sets & Expansions" },
   { key: "deck", prefixes: ["STARTER DECK", "STARTER DECK EX", "ULTRA DECK"], label: "Decks" },
   { key: "promo", prefixes: [null], id: "569901", label: "Promo" },
   { key: "special", prefixes: [null], id: "569801", label: "Special" },
