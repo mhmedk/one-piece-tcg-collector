@@ -170,14 +170,74 @@ async function main() {
 
   const supabase = getSupabaseClient();
 
-  // Transform packs → sets rows using title_parts
-  const setRows = packs.map((pack) => ({
-    id: pack.id,
-    label: pack.title_parts.label,
-    name: pack.title_parts.title,
-    prefix: pack.title_parts.prefix,
-    raw_title: pack.raw_title,
-  }));
+  // Detect combined packs (e.g. "OP14-EB04") and split into separate sets
+  // Maps card ID prefix (e.g. "OP14") to the correct set ID
+  const COMBINED_LABEL_RE = /^([A-Z]+\d+)-([A-Z]+\d+)$/;
+  const cardPrefixToSetId = new Map<string, string>();
+  const formatLabel = (raw: string) => raw.replace(/([A-Z]+)(\d+)/, "$1-$2");
+
+  // Name overrides for sub-sets that have their own distinct name
+  const SET_NAME_OVERRIDES: Record<string, string> = {
+    "EB-04": "EGGHEAD CRISIS",
+  };
+
+  // Build a mapping from label prefix (e.g. "OP", "EB") to set prefix ("BOOSTER PACK", "EXTRA BOOSTER")
+  // by looking at existing non-combined packs
+  const labelPrefixToSetPrefix = new Map<string, string>();
+  for (const pack of packs) {
+    const label = pack.title_parts.label;
+    if (!label || COMBINED_LABEL_RE.test(label)) continue;
+    const letterPrefix = label.replace(/-?\d+$/, ""); // "OP-01" → "OP"
+    if (pack.title_parts.prefix && !labelPrefixToSetPrefix.has(letterPrefix)) {
+      labelPrefixToSetPrefix.set(letterPrefix, pack.title_parts.prefix);
+    }
+  }
+
+  const setRows: { id: string; label: string | null; name: string; prefix: string | null; raw_title: string }[] = [];
+
+  for (const pack of packs) {
+    const label = pack.title_parts.label;
+    const match = label?.match(COMBINED_LABEL_RE);
+
+    if (match) {
+      const [, prefix1, prefix2] = match;
+      const secondaryId = `${pack.id}_${prefix2.toLowerCase()}`;
+      const letters1 = prefix1.replace(/\d+$/, ""); // "OP14" → "OP"
+      const letters2 = prefix2.replace(/\d+$/, ""); // "EB04" → "EB"
+
+      const label1 = formatLabel(prefix1);
+      const label2 = formatLabel(prefix2);
+
+      // Primary sub-set keeps the original pack ID
+      setRows.push({
+        id: pack.id,
+        label: label1,
+        name: SET_NAME_OVERRIDES[label1] ?? pack.title_parts.title,
+        prefix: labelPrefixToSetPrefix.get(letters1) ?? pack.title_parts.prefix,
+        raw_title: pack.raw_title,
+      });
+      // Secondary sub-set gets a derived ID
+      setRows.push({
+        id: secondaryId,
+        label: label2,
+        name: SET_NAME_OVERRIDES[label2] ?? pack.title_parts.title,
+        prefix: labelPrefixToSetPrefix.get(letters2) ?? pack.title_parts.prefix,
+        raw_title: pack.raw_title,
+      });
+
+      cardPrefixToSetId.set(prefix1, pack.id);
+      cardPrefixToSetId.set(prefix2, secondaryId);
+      console.log(`Split combined pack ${label} → ${formatLabel(prefix1)} (${pack.id}, ${labelPrefixToSetPrefix.get(letters1)}) + ${formatLabel(prefix2)} (${secondaryId}, ${labelPrefixToSetPrefix.get(letters2)})`);
+    } else {
+      setRows.push({
+        id: pack.id,
+        label: pack.title_parts.label,
+        name: pack.title_parts.title,
+        prefix: pack.title_parts.prefix,
+        raw_title: pack.raw_title,
+      });
+    }
+  }
 
   console.log(`Upserting ${setRows.length} sets...`);
   for (let i = 0; i < setRows.length; i += BATCH_SIZE) {
@@ -196,9 +256,21 @@ async function main() {
   await uploadMissingImages(supabase, uniqueCards);
 
   // Transform and upsert cards — use img_full_url, normalize effect
+  // For cards in split packs, override pack_id based on card ID prefix
+  // Some cards have IDs from other sets but belong to a specific split sub-set
+  const CARD_PACK_OVERRIDES: Record<string, string> = {
+    "EB01-023_p1": "569114_eb04", // Alternate art reprint included in EB-04
+  };
+
+  const getPackId = (card: VegapullCard): string => {
+    if (CARD_PACK_OVERRIDES[card.id]) return CARD_PACK_OVERRIDES[card.id];
+    const prefix = card.id.split("-")[0];
+    return cardPrefixToSetId.get(prefix) ?? card.pack_id;
+  };
+
   const cardRows = uniqueCards.map((card) => ({
     id: card.id,
-    pack_id: card.pack_id,
+    pack_id: getPackId(card),
     name: card.name,
     rarity: card.rarity,
     category: card.category,
@@ -234,6 +306,24 @@ async function main() {
   }
 
   console.log(`\nImport complete: ${setRows.length} sets, ${cardRows.length} cards`);
+
+  // Trigger on-demand revalidation so cached pages reflect new data
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const revalidationSecret = process.env.REVALIDATION_SECRET;
+  if (appUrl && revalidationSecret) {
+    try {
+      const res = await fetch(`${appUrl}/api/revalidate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${revalidationSecret}` },
+      });
+      const body = await res.json();
+      console.log(`Revalidation: ${res.ok ? "success" : "failed"}`, body);
+    } catch (err) {
+      console.warn("Revalidation request failed (non-blocking):", err);
+    }
+  } else {
+    console.log("Skipping revalidation (NEXT_PUBLIC_APP_URL or REVALIDATION_SECRET not set)");
+  }
 }
 
 main().catch((err) => {

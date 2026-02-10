@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -35,19 +37,28 @@ interface SetCategory {
 }
 
 const SET_CATEGORIES: SetCategory[] = [
-  { key: "booster", prefixes: ["BOOSTER PACK"], label: "Booster Packs" },
-  { key: "starter", prefixes: ["STARTER DECK", "STARTER DECK EX", "ULTRA DECK"], label: "Starter Decks" },
-  { key: "extra", prefixes: ["EXTRA BOOSTER"], label: "Extra Boosters" },
-  { key: "premium", prefixes: ["PREMIUM BOOSTER"], label: "Premium Boosters" },
-  { key: "promo", prefixes: [null], id: "569901", label: "Promotional" },
-  { key: "other", prefixes: [null], id: "569801", label: "Other" },
+  { key: "all", prefixes: [], label: "All Cards" },
+  { key: "booster", prefixes: ["BOOSTER PACK", "EXTRA BOOSTER", "PREMIUM BOOSTER"], label: "Boosters" },
+  { key: "deck", prefixes: ["STARTER DECK", "STARTER DECK EX", "ULTRA DECK"], label: "Decks" },
+  { key: "promo", prefixes: [null], id: "569901", label: "Promo" },
+  { key: "special", prefixes: [null], id: "569801", label: "Special" },
 ];
+
+// Display order and labels for sub-groups within categories
+const PREFIX_GROUPS: Record<string, { label: string; prefixes: string[] }[]> = {
+  booster: [
+    { label: "Booster Packs", prefixes: ["BOOSTER PACK"] },
+    { label: "Extra Boosters", prefixes: ["EXTRA BOOSTER"] },
+    { label: "Premium Boosters", prefixes: ["PREMIUM BOOSTER"] },
+  ],
+};
 
 function getSetValue(set: SetOption): string {
   return set.label ?? set.id;
 }
 
 function getSetsForCategory(sets: SetOption[], category: SetCategory): SetOption[] {
+  if (category.key === "all") return sets;
   if (category.id) {
     return sets.filter((s) => s.id === category.id);
   }
@@ -55,9 +66,11 @@ function getSetsForCategory(sets: SetOption[], category: SetCategory): SetOption
 }
 
 function getCategoryForSet(sets: SetOption[], setParam: string): string {
+  if (setParam === "all") return "all";
   const set = sets.find((s) => s.label === setParam || s.id === setParam);
   if (set) {
     for (const cat of SET_CATEGORIES) {
+      if (cat.key === "all") continue;
       if (cat.id && set.id === cat.id) return cat.key;
       if (!cat.id && cat.prefixes.includes(set.prefix) && set.label !== null) return cat.key;
     }
@@ -76,14 +89,14 @@ export function SearchFilter({
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState(searchParams.get("q") || "");
-  const currentSetParam = searchParams.get("set") || "OP-01";
+  const currentSetParam = searchParams.get("set") || "all";
   const [activeCategoryKey, setActiveCategoryKey] = useState(
     getCategoryForSet(sets, currentSetParam)
   );
 
   const activeCategory = SET_CATEGORIES.find((c) => c.key === activeCategoryKey) ?? SET_CATEGORIES[0];
   const categorySets = getSetsForCategory(sets, activeCategory);
-  const isSingleSetCategory = !!activeCategory.id;
+  const isSingleSetCategory = activeCategory.key === "all" || !!activeCategory.id;
 
   const createQueryString = useCallback(
     (params: Record<string, string | null>) => {
@@ -123,15 +136,30 @@ export function SearchFilter({
 
   const handleFilterChange = (key: string, value: string) => {
     startTransition(() => {
-      router.push(`/?${createQueryString({ [key]: value === "all" ? null : value })}`);
+      // Keep "all" for set param (it's a real value), strip it for filters (means "no filter")
+      const resolved = key === "set" ? value : (value === "all" ? null : value);
+      router.push(`/?${createQueryString({ [key]: resolved })}`);
     });
   };
 
   const handleCategoryChange = (key: string) => {
     setActiveCategoryKey(key);
+    if (key === "all") {
+      handleFilterChange("set", "all");
+      return;
+    }
     const cat = SET_CATEGORIES.find((c) => c.key === key);
     if (!cat) return;
-    const firstSet = getSetsForCategory(sets, cat)[0];
+    const catSets = getSetsForCategory(sets, cat);
+    // Pick the first set from the first sub-group (respects display order)
+    const groups = PREFIX_GROUPS[key];
+    let firstSet = catSets[0];
+    if (groups) {
+      for (const group of groups) {
+        const match = catSets.find((s) => group.prefixes.includes(s.prefix ?? ""));
+        if (match) { firstSet = match; break; }
+      }
+    }
     if (firstSet) {
       handleFilterChange("set", getSetValue(firstSet));
     }
@@ -139,14 +167,15 @@ export function SearchFilter({
 
   const clearFilters = () => {
     setSearch("");
-    const set = searchParams.get("set");
+    const set = searchParams.get("set") || "all";
     startTransition(() => {
-      router.push(set ? `/?set=${set}` : "/");
+      router.push(`/?set=${set}`);
     });
   };
 
   const hasFilters = searchParams.has("q") || searchParams.has("type") ||
-                     searchParams.has("color") || searchParams.has("rarity");
+                     searchParams.has("color") || searchParams.has("rarity") ||
+                     (searchParams.has("sort") && searchParams.get("sort") !== "set");
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
@@ -158,7 +187,7 @@ export function SearchFilter({
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent>
-          {SET_CATEGORIES.filter((c) => getSetsForCategory(sets, c).length > 0).map((c) => (
+          {SET_CATEGORIES.filter((c) => c.key === "all" || getSetsForCategory(sets, c).length > 0).map((c) => (
             <SelectItem key={c.key} value={c.key}>
               {c.label}
             </SelectItem>
@@ -175,11 +204,28 @@ export function SearchFilter({
             <SelectValue placeholder="Set" />
           </SelectTrigger>
           <SelectContent>
-            {categorySets.map((set) => (
-              <SelectItem key={set.id} value={getSetValue(set)}>
-                {set.label} - {set.name}
-              </SelectItem>
-            ))}
+            {PREFIX_GROUPS[activeCategoryKey]
+              ? PREFIX_GROUPS[activeCategoryKey].map((group) => {
+                  const groupSets = categorySets.filter((s) =>
+                    group.prefixes.includes(s.prefix ?? "")
+                  );
+                  if (groupSets.length === 0) return null;
+                  return (
+                    <SelectGroup key={group.label}>
+                      <SelectLabel>{group.label}</SelectLabel>
+                      {groupSets.map((set) => (
+                        <SelectItem key={set.id} value={getSetValue(set)}>
+                          {set.label} - {set.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  );
+                })
+              : categorySets.map((set) => (
+                  <SelectItem key={set.id} value={getSetValue(set)}>
+                    {set.label} - {set.name}
+                  </SelectItem>
+                ))}
           </SelectContent>
         </Select>
       )}
@@ -232,6 +278,22 @@ export function SearchFilter({
               {rarity}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={searchParams.get("sort") || "set"}
+        onValueChange={(value) => handleFilterChange("sort", value === "set" ? "set" : value)}
+      >
+        <SelectTrigger className="w-[140px]">
+          <SelectValue placeholder="Sort by" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="set">By Set</SelectItem>
+          <SelectItem value="name">By Name</SelectItem>
+          <SelectItem value="cost-asc">Cost (Low)</SelectItem>
+          <SelectItem value="cost-desc">Cost (High)</SelectItem>
+          <SelectItem value="power-desc">Power (High)</SelectItem>
         </SelectContent>
       </Select>
 
