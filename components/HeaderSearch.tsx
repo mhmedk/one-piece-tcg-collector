@@ -45,10 +45,10 @@ export function HeaderSearch() {
   return (
     <>
       {/* Desktop search */}
-      <form onSubmit={handleSubmit} className="hidden sm:flex relative flex-1 max-w-sm mx-4">
+      <form onSubmit={handleSubmit} className="hidden sm:flex relative flex-1 max-w-sm mx-auto">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
         <Input
-          placeholder="Search cards..."
+          placeholder="Search by name, type, or effect..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 h-9"
@@ -76,7 +76,7 @@ export function HeaderSearch() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               ref={inputRef}
-              placeholder="Search cards..."
+              placeholder="Search by name, type, or effect..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"

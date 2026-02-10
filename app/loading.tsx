@@ -5,7 +5,7 @@ export default function Loading() {
     <main className="min-h-[calc(100vh-3.5rem)]">
       <section className="flex-1 py-6 px-4 lg:px-8">
         {/* Filter bar skeleton — category + type/color/rarity + sort + search */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:justify-center">
           <Skeleton className="h-9 w-[180px] rounded-md" />
           <Skeleton className="h-9 w-[140px] rounded-md" />
           <Skeleton className="h-9 w-[140px] rounded-md" />
