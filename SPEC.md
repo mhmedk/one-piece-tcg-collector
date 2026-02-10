@@ -12,7 +12,7 @@ A web application for browsing, collecting, and managing One Piece Trading Card 
 - **Framework**: Next.js 16 (App Router)
 - **Frontend**: React 19, TypeScript
 - **Styling**: Tailwind CSS 4
-- **UI Components**: shadcn/ui with Base UI (not Radix)
+- **UI Components**: shadcn/ui (Radix primitives)
 
 ### Backend & Data
 - **Database**: Supabase (PostgreSQL)
@@ -22,15 +22,21 @@ A web application for browsing, collecting, and managing One Piece Trading Card 
 - **Image Delivery**: Served directly from Supabase Storage (no Next.js image optimization)
 
 ### Data Fetching
-- **Server**: React Server Components for page loads
-- **Client**: SWR for mutations with optimistic updates
+- **Server**: `"use cache"` directive with `cacheTag()` for static data (cards, sets)
+- **Client**: SWR for collection mutations with optimistic updates
 
 ### Forms & Validation
 - **Forms**: React Hook Form
 - **Validation**: Zod schemas
 
+### Additional Libraries
+- **Virtual Scrolling**: `@tanstack/react-virtual` for large card lists
+- **React Compiler**: `babel-plugin-react-compiler` (enabled via `reactCompiler: true` in next.config.ts)
+- **Toast Notifications**: `sonner`
+- **Theme Management**: `next-themes`
+
 ### Testing
-- **Unit/Integration**: Vitest
+- **Unit/Integration**: Vitest (planned, not yet installed)
 - **E2E**: Deferred (add later when app stabilizes)
 
 ### Infrastructure
@@ -47,21 +53,35 @@ A web application for browsing, collecting, and managing One Piece Trading Card 
 Vegapull JSON files (local)
        │
        ▼ (manual CLI: npm run import-cards)
-   Supabase DB ◄──── User Collections/Decks
+   Supabase DB ◄──── User Collections (via Server Actions)
        │
        ▼
-   Next.js App ───► Users
+   "use cache" data functions (lib/data.ts)
+       │
+       ▼
+   Next.js App (Server Components) ───► Users
 ```
+
+### Caching Strategy
+
+- **`"use cache"` directive**: Applied to data-fetching functions in `lib/data.ts` for cards and sets
+- **`cacheTag()`**: Tags cache entries (`"cards"`, `"sets"`) for targeted invalidation
+- **On-demand revalidation**: `/api/revalidate` endpoint accepts a `REVALIDATION_SECRET` and calls `revalidateTag()` to bust cache after data imports
+- **`cacheComponents: true`**: Enabled in `next.config.ts` for component-level caching
 
 ### Key Architectural Decisions
 
 1. **Manual Data Import**: Card/set data is imported from vegapull JSON files via a CLI script (`scripts/import-cards.ts`). The script deduplicates cards, converts images to WebP, uploads to Supabase Storage, and upserts data into Supabase. Frontend never calls any external API directly.
 
-2. **Price History**: Store prices forever. Display is tiered: free users see 90 days, premium users see full history.
+2. **Server Actions for Mutations**: All collection mutations (add, update, delete) use React Server Actions (`lib/actions/collection.ts`) instead of REST API routes. Server Actions handle authentication, validation (Zod), and database operations in a single function.
 
-3. **Card Variants**: Initially follow data source structure for variants. Future: treat each variant (alternate art, parallel rares, promos) as separate trackable items.
+3. **`"use cache"` for Data Fetching**: Public data (cards, sets) is fetched via functions with the `"use cache"` directive and `cacheTag()`, providing static-like performance with on-demand revalidation. No REST API routes needed for reads.
 
-4. **Images**: Stored in Supabase Storage as WebP (converted from PNG at import time using sharp). Served directly from Supabase Storage with 1-year cache-control headers. Next.js image optimization is disabled (`unoptimized: true`).
+4. **Price History**: Store prices forever. Display is tiered: free users see 90 days, premium users see full history.
+
+5. **Card Variants**: Initially follow data source structure for variants. Future: treat each variant (alternate art, parallel rares, promos) as separate trackable items.
+
+6. **Images**: Stored in Supabase Storage as WebP (converted from PNG at import time using sharp). Served directly from Supabase Storage with 1-year cache-control headers. Next.js image optimization is disabled (`unoptimized: true`).
 
 ---
 
@@ -71,36 +91,36 @@ Vegapull JSON files (local)
 
 #### Browse Cards
 - [x] View all cards organized by set
-- [ ] Responsive fluid grid layout (auto-columns based on screen width)
-- [ ] Card click opens quick-add popover
-- [ ] "View details" link to dedicated card page
-- [ ] Full-text search across card names and text
-- [ ] Advanced filters: type, rarity, cost, power, attribute (AND/OR logic)
-- [ ] Instant filtering (no apply button)
-- [ ] Smart default sorting (card number in set)
+- [x] Responsive fluid grid layout with virtual scrolling (`@tanstack/react-virtual`)
+- [x] Card click opens quick-add dialog
+- [x] "View details" link to dedicated card page
+- [x] Full-text search across card names, IDs, and effect text
+- [x] Filters: type (category), color, rarity
+- [x] Instant filtering (no apply button)
+- [x] Smart default sorting (card ID order)
 - [ ] Sort options: name, price, rarity, type, date added
 
 #### Collection Management
-- [ ] Add cards with rich metadata per physical copy:
-  - Condition (mint, near-mint, played, heavily played)
-  - Price paid
-  - Date acquired
-  - Source/notes
-- [ ] All metadata fields optional (quick-add with defaults)
-- [ ] Track multiple copies of same card separately
-- [ ] Edit/delete collection entries
+- [x] Add cards with metadata per physical copy:
+  - Condition (Near Mint, Lightly Played, Moderately Played, Heavily Played, Damaged)
+  - Purchase price
+  - Notes
+- [x] All metadata fields optional (quick-add with defaults)
+- [x] Track multiple copies of same card (aggregated by condition)
+- [x] Edit/delete collection entries
 - [ ] DON!! card tracking with different art variations
 
 #### Authentication
-- [ ] Email/password registration and login
-- [ ] OAuth providers (Google, Discord, etc.)
+- [x] Email/password registration and login
+- [x] Google OAuth
+- [ ] Discord OAuth
 - [ ] Multi-device sync
 - [ ] Full data deletion on account delete
 
 #### Theme
-- [ ] System preference detection
-- [ ] Manual light/dark toggle
-- [ ] Persistent theme preference
+- [x] System preference detection
+- [x] Manual light/dark toggle
+- [x] Persistent theme preference
 
 ### Phase 2: Deck Builder
 
@@ -180,42 +200,57 @@ Vegapull JSON files (local)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | text | Primary key (vegapull pack ID) |
-| label | text | Set label (e.g. "OP01"), nullable |
+| label | text | Set label (e.g. "OP01"), unique, nullable |
 | name | text | Display name |
-| prefix | text | Set prefix, nullable |
+| prefix | text | Set prefix (e.g. "BOOSTER PACK"), nullable |
 | raw_title | text | Original raw title from data source |
-| created_at | timestamp | When imported |
-| updated_at | timestamp | Last import |
+| created_at | timestamptz | When imported |
+| updated_at | timestamptz | Last import |
 
 #### `cards`
 | Column | Type | Description |
 |--------|------|-------------|
-| id | text | Primary key (vegapull card ID) |
+| id | text | Primary key (card ID e.g. "ST01-001") |
 | pack_id | text | Foreign key to sets |
 | name | text | Card name |
-| category | text | Character, Event, Stage, Leader, DON!! |
-| rarity | text | C, UC, R, SR, SEC, L, etc. |
-| attributes | text[] | Array of attributes (Slash, Strike, Ranged, etc.) |
-| types | text[] | Array of card types |
+| category | text | Leader, Character, Event, Stage |
+| rarity | text | Common, SuperRare, Leader, etc. |
 | colors | text[] | Card colors array |
 | cost | integer | Cost to play (nullable) |
 | power | integer | Power stat (nullable) |
 | life | integer | Life (leaders only, nullable) |
 | counter | integer | Counter value (nullable) |
-| effect | text | Card effect text (nullable) |
+| attributes | text[] | Array of attributes (Slash, Strike, Ranged, etc.) |
+| types | text[] | Array of card types |
+| effect | text | Card effect text (nullable, may contain `<br>` tags) |
 | trigger_text | text | Trigger effect text (nullable) |
 | img_url | text | Supabase Storage URL (WebP) |
 | block_number | integer | Block number (nullable) |
-| created_at | timestamp | When imported |
-| updated_at | timestamp | Last import |
+| created_at | timestamptz | When imported |
+| updated_at | timestamptz | Last import |
+
+#### `collection_entries`
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Foreign key to users |
+| card_id | text | Foreign key to cards |
+| quantity | integer | Number of copies (default 1, must be > 0) |
+| condition | text | Near Mint, Lightly Played, Moderately Played, Heavily Played, Damaged |
+| purchase_price | numeric(10,2) | Purchase price (nullable) |
+| notes | text | User notes (nullable) |
+| created_at | timestamptz | When added |
+| updated_at | timestamptz | Last updated |
+
+**Unique constraint**: `(user_id, card_id, condition)` — prevents duplicate entries for the same card/user/condition combo. Adding a card with the same condition increments quantity instead.
 
 #### `price_history`
 | Column | Type | Description |
 |--------|------|-------------|
 | id | uuid | Primary key |
 | card_id | text | Foreign key to cards |
-| market_price | decimal | Market price (nullable) |
-| recorded_at | date | Date of snapshot |
+| market_price | numeric(10,2) | Market price (nullable) |
+| recorded_at | timestamptz | Date of snapshot |
 
 #### `users`
 | Column | Type | Description |
@@ -225,21 +260,10 @@ Vegapull JSON files (local)
 | display_name | text | Display name (nullable) |
 | avatar_url | text | Avatar URL (nullable) |
 | is_premium | boolean | Premium subscriber |
-| created_at | timestamp | Registration date |
-| updated_at | timestamp | Last updated |
+| created_at | timestamptz | Registration date |
+| updated_at | timestamptz | Last updated |
 
-#### `collection_entries`
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| user_id | uuid | Foreign key to users |
-| card_id | text | Foreign key to cards |
-| quantity | integer | Number of copies |
-| condition | text | mint, near-mint, played, heavily-played |
-| purchase_price | decimal | Purchase price (nullable) |
-| notes | text | User notes (nullable) |
-| created_at | timestamp | When added |
-| updated_at | timestamp | Last updated |
+Auto-created via trigger on `auth.users` insert.
 
 #### `decks` (not yet implemented)
 | Column | Type | Description |
@@ -250,8 +274,8 @@ Vegapull JSON files (local)
 | leader_card_id | text | Foreign key to cards |
 | share_id | text | Short random ID for sharing |
 | is_shared | boolean | Whether shareable link is active |
-| created_at | timestamp | Creation date |
-| updated_at | timestamp | Last modified |
+| created_at | timestamptz | Creation date |
+| updated_at | timestamptz | Last modified |
 
 #### `deck_cards` (not yet implemented)
 | Column | Type | Description |
@@ -266,114 +290,98 @@ Vegapull JSON files (local)
 |--------|------|-------------|
 | id | uuid | Primary key |
 | sync_type | text | Type of sync operation |
-| status | text | success, failed, partial |
+| status | text | pending, success, failed |
 | cards_synced | integer | Count of cards synced (nullable) |
 | sets_synced | integer | Count of sets synced (nullable) |
-| started_at | timestamp | Sync start time |
-| completed_at | timestamp | Sync end time (nullable) |
+| started_at | timestamptz | Sync start time |
+| completed_at | timestamptz | Sync end time (nullable) |
 | error_message | text | Error details if failed (nullable) |
 
 ---
 
-## API Routes (Next.js)
+## Server Actions & API Routes
 
-### Public Routes
+### Server Actions (`lib/actions/collection.ts`)
+
+Collection mutations are handled via React Server Actions:
+
+| Action | Description |
+|--------|-------------|
+| `getCollectionEntries()` | Fetch authenticated user's collection with card details |
+| `addToCollection(data)` | Add card to collection (or increment quantity if same card/condition exists) |
+| `updateCollectionEntry(entryId, data)` | Update entry (quantity, condition, price, notes) |
+| `deleteCollectionEntry(entryId)` | Remove entry from collection |
+
+All actions validate authentication via `supabase.auth.getUser()` and input via Zod schemas.
+
+### Cached Data Functions (`lib/data.ts`)
+
+Server-side data fetching with `"use cache"` and `cacheTag()`:
+
+| Function | Cache Tag | Description |
+|----------|-----------|-------------|
+| `getSets()` | `"sets"` | All sets (id, label, name, prefix) |
+| `resolveSet(selectedSet)` | `"sets"` | Resolve set by label or ID |
+| `getCards(filters)` | `"cards"` | Cards with optional filters (packId, search, type, color, rarity) |
+| `getCard(cardId)` | `"cards"` | Single card with set info |
+
+### API Routes
+
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/api/sets` | GET | List all sets (from cache) |
-| `/api/sets/[setId]/cards` | GET | Cards in a set (from cache) |
-| `/api/cards/[cardId]` | GET | Single card details |
-| `/api/cards/search` | GET | Search/filter cards |
-| `/api/decks/[shareId]` | GET | View shared deck |
-
-### Protected Routes (Authenticated)
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/api/collection` | GET | User's collection |
-| `/api/collection` | POST | Add card to collection |
-| `/api/collection/[entryId]` | PATCH | Update collection entry |
-| `/api/collection/[entryId]` | DELETE | Remove from collection |
-| `/api/decks` | GET | User's decks |
-| `/api/decks` | POST | Create deck |
-| `/api/decks/[deckId]` | PATCH | Update deck |
-| `/api/decks/[deckId]` | DELETE | Delete deck |
-| `/api/decks/[deckId]/share` | POST | Generate share link |
-| `/api/analytics` | GET | User's analytics data |
-
-### Admin Routes (not yet implemented)
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/api/admin/sync` | POST | Trigger manual sync |
-| `/api/admin/sync/status` | GET | Get sync status/logs |
+| `/api/revalidate` | POST | On-demand cache revalidation (requires `REVALIDATION_SECRET`) |
+| `/api/auth/callback` | GET | Supabase OAuth callback handler |
 
 ---
 
 ## Page Routes
 
 ### Public
-| Route | Description |
-|-------|-------------|
-| `/` | Homepage with card browser |
-| `/sets/[setId]` | Cards filtered by set |
-| `/cards/[cardId]` | Card detail page |
-| `/deck/[shareId]` | View shared deck (public) |
-| `/login` | Authentication page |
-| `/register` | Registration page |
+| Route | Description | Status |
+|-------|-------------|--------|
+| `/` | Homepage with card browser (search, filters, virtual grid) | Implemented |
+| `/cards/[cardId]` | Card detail page with add-to-collection | Implemented |
+| `/(auth)/login` | Login page (email/password + Google OAuth) | Implemented |
+| `/(auth)/register` | Registration page | Implemented |
 
 ### Protected (Authenticated)
-| Route | Description |
-|-------|-------------|
-| `/collection` | User's collection view |
-| `/decks` | User's deck list |
-| `/decks/[deckId]` | Deck editor |
-| `/decks/new` | Create new deck |
-| `/analytics` | Analytics dashboard |
-| `/settings` | User settings |
-
-### Admin
-| Route | Description |
-|-------|-------------|
-| `/admin` | Admin dashboard |
-| `/admin/sync` | Sync management |
+| Route | Description | Status |
+|-------|-------------|--------|
+| `/collection` | User's collection view with filters | Implemented |
+| `/decks` | User's deck list | Not implemented |
+| `/decks/[deckId]` | Deck editor | Not implemented |
+| `/decks/new` | Create new deck | Not implemented |
+| `/analytics` | Analytics dashboard | Not implemented |
+| `/settings` | User settings | Not implemented |
 
 ---
 
 ## UI Components
 
-### Core Components (shadcn/ui + Base UI)
-- Button, Input, Select, Checkbox
-- Dialog (modal), Popover, Dropdown Menu
-- Tabs, Accordion
-- Toast notifications
-- Form components
+### Core Components (shadcn/ui + Radix)
+- Button, Input, Select, Checkbox, Label
+- Dialog, Popover, Dropdown Menu
+- Tabs, Card, Badge, Separator
+- Skeleton (loading states)
+- Alert Dialog
+- Avatar
+- Form (react-hook-form integration)
+- Sonner (toast notifications)
 
 ### Custom Components
-- `CardGrid` - Responsive card display grid
+- `VirtualCardGrid` - Virtual scrolling card grid using `@tanstack/react-virtual`
 - `CardTile` - Individual card in grid
-- `CardPopover` - Quick-add popover on card click
-- `CardDetailPage` - Full card information page
-- `FilterSidebar` - Search and filter controls
-- `SetSelector` - Set filter dropdown/list
-- `CollectionEntry` - Card in collection with metadata
-- `DeckBuilder` - Deck editing interface
-- `DeckValidation` - Real-time deck rule validation
-- `PriceChart` - Price history visualization
-- `AnalyticsDashboard` - Portfolio metrics display
+- `CardList` - Card list with search/filter integration
+- `SearchFilter` - Search input and filter controls
+- `CollectionEntryForm` - Form for adding/editing collection entries
+- `CollectionEntryCard` - Card display in collection view
+- `CollectionCardTile` - Card tile variant for collection
+- `CollectionFilters` - Collection-specific filter controls
+- `AddToCollectionProvider` - Context provider for add-to-collection dialog state
+- `Header` - App header with navigation
+- `UserNav` - User menu (avatar, dropdown with logout)
 - `ThemeToggle` - Light/dark mode switch
-
----
-
-## Admin Panel
-
-### Access Control
-- Hardcoded admin email addresses in environment variables
-- Check against `ADMIN_EMAILS` env var on protected routes
-
-### Features
-- View last sync timestamp
-- View sync error logs
-- Trigger manual data sync
-- View sync history
+- `ThemeProvider` - Theme context provider (next-themes)
 
 ---
 
@@ -386,8 +394,8 @@ Vegapull JSON files (local)
 - Frontend always reads from Supabase (never affected by import process)
 
 ### User-Facing Errors
-- Form validation errors shown inline
-- Network errors shown as toast notifications
+- Form validation errors shown inline (Zod + react-hook-form)
+- Network errors shown as toast notifications (sonner)
 - Graceful fallbacks where possible
 
 ---
@@ -395,8 +403,8 @@ Vegapull JSON files (local)
 ## Security Considerations
 
 - All user data protected by Supabase RLS policies
-- API routes validate authentication via Supabase Auth
-- Admin routes check against hardcoded admin emails
+- Server Actions validate authentication via `supabase.auth.getUser()`
+- Revalidation endpoint protected by `REVALIDATION_SECRET`
 - No sensitive data in client-side code
 - HTTPS enforced via Vercel
 
@@ -404,11 +412,14 @@ Vegapull JSON files (local)
 
 ## Performance Optimizations
 
-- Server Components for initial page loads
+- `"use cache"` directive for static data fetching (cards, sets) with cache tags
+- On-demand revalidation via `/api/revalidate` (no time-based polling)
+- React Compiler enabled (`reactCompiler: true`) for automatic memoization
+- `cacheComponents: true` for component-level caching
+- Virtual scrolling (`@tanstack/react-virtual`) for large card lists
 - SWR for client-side collection data with optimistic updates
 - Images served from Supabase Storage with 1-year cache-control headers
-- Database indexes on frequently queried columns
-- Pagination for large card lists
+- Database indexes on frequently queried columns (including GIN indexes for array columns)
 
 ---
 
@@ -423,14 +434,14 @@ Vegapull JSON files (local)
 
 ## Testing Strategy
 
-### Unit Tests (Vitest)
+### Unit Tests (Vitest — planned)
 - Deck validation logic
 - Price calculation functions
 - Data transformation utilities
 - Component unit tests
 
 ### Integration Tests
-- API route handlers
+- Server Action handlers
 - Database operations
 - Authentication flows
 
@@ -447,8 +458,9 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# Admin
-ADMIN_EMAILS=admin@example.com,admin2@example.com
+# Revalidation
+REVALIDATION_SECRET=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Stripe (Phase 4)
 STRIPE_SECRET_KEY=
@@ -465,7 +477,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 Currently minimal (`vercel.json` is empty). No cron jobs configured.
 
 ### Database Migrations
-- Managed via Supabase migrations
+- Managed via Supabase migrations (`supabase/migrations/`)
 - Run migrations before deployment
 
 ---
@@ -478,7 +490,3 @@ Currently minimal (`vercel.json` is empty). No cron jobs configured.
 | **Phase 2** | Deck Builder, Sharing, Export | Phase 1 complete |
 | **Phase 3** | Analytics Dashboard, Price History | Phase 1 complete |
 | **Phase 4** | Premium Tier, Stripe, Email Alerts | Phase 3 complete |
-
----
-
-*Specification finalized: Interview complete*
