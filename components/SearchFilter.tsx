@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Input } from "@/components/ui/input";
+import { useCallback, useMemo, useTransition } from "react";
 import {
   Select,
   SelectContent,
@@ -13,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 
 interface SetOption {
   id: string;
@@ -65,8 +64,17 @@ function getSetsForCategory(sets: SetOption[], category: SetCategory): SetOption
   return sets.filter((s) => category.prefixes.includes(s.prefix) && s.label !== null);
 }
 
+const CATEGORY_ALL_VALUES: Record<string, string> = {
+  booster: "all-booster",
+  deck: "all-deck",
+};
+
 function getCategoryForSet(sets: SetOption[], setParam: string): string {
   if (setParam === "all") return "all";
+  // Check category-level "all" values (e.g., all-booster, all-deck)
+  for (const [key, value] of Object.entries(CATEGORY_ALL_VALUES)) {
+    if (setParam === value) return key;
+  }
   const set = sets.find((s) => s.label === setParam || s.id === setParam);
   if (set) {
     for (const cat of SET_CATEGORIES) {
@@ -86,12 +94,12 @@ export function SearchFilter({
 }: SearchFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
-  const [search, setSearch] = useState(searchParams.get("q") || "");
   const currentSetParam = searchParams.get("set") || "all";
-  const [activeCategoryKey, setActiveCategoryKey] = useState(
-    getCategoryForSet(sets, currentSetParam)
+  const activeCategoryKey = useMemo(
+    () => getCategoryForSet(sets, currentSetParam),
+    [sets, currentSetParam]
   );
 
   const activeCategory = SET_CATEGORIES.find((c) => c.key === activeCategoryKey) ?? SET_CATEGORIES[0];
@@ -115,25 +123,6 @@ export function SearchFilter({
     [searchParams]
   );
 
-  // Keep a stable ref to createQueryString so the effect only re-runs on `search`
-  const createQueryStringRef = useRef(createQueryString);
-  createQueryStringRef.current = createQueryString;
-
-  // Debounced auto-search on typing
-  const isInitialMount = useRef(true);
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      startTransition(() => {
-        router.push(`/?${createQueryStringRef.current({ q: search || null })}`);
-      });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search, router, startTransition]);
-
   const handleFilterChange = (key: string, value: string) => {
     startTransition(() => {
       // Keep "all" for set param (it's a real value), strip it for filters (means "no filter")
@@ -143,30 +132,25 @@ export function SearchFilter({
   };
 
   const handleCategoryChange = (key: string) => {
-    setActiveCategoryKey(key);
     if (key === "all") {
       handleFilterChange("set", "all");
       return;
     }
     const cat = SET_CATEGORIES.find((c) => c.key === key);
     if (!cat) return;
-    const catSets = getSetsForCategory(sets, cat);
-    // Pick the first set from the first sub-group (respects display order)
-    const groups = PREFIX_GROUPS[key];
-    let firstSet = catSets[0];
-    if (groups) {
-      for (const group of groups) {
-        const match = catSets.find((s) => group.prefixes.includes(s.prefix ?? ""));
-        if (match) { firstSet = match; break; }
-      }
+    // Default to "All" for categories that support it
+    const allValue = CATEGORY_ALL_VALUES[key];
+    if (allValue) {
+      handleFilterChange("set", allValue);
+      return;
     }
-    if (firstSet) {
-      handleFilterChange("set", getSetValue(firstSet));
+    const catSets = getSetsForCategory(sets, cat);
+    if (catSets[0]) {
+      handleFilterChange("set", getSetValue(catSets[0]));
     }
   };
 
   const clearFilters = () => {
-    setSearch("");
     const set = searchParams.get("set") || "all";
     startTransition(() => {
       router.push(`/?set=${set}`);
@@ -204,6 +188,11 @@ export function SearchFilter({
             <SelectValue placeholder="Set" />
           </SelectTrigger>
           <SelectContent>
+            {CATEGORY_ALL_VALUES[activeCategoryKey] && (
+              <SelectItem value={CATEGORY_ALL_VALUES[activeCategoryKey]}>
+                All {activeCategory.label}
+              </SelectItem>
+            )}
             {PREFIX_GROUPS[activeCategoryKey]
               ? PREFIX_GROUPS[activeCategoryKey].map((group) => {
                   const groupSets = categorySets.filter((s) =>
@@ -303,17 +292,6 @@ export function SearchFilter({
           <span className="sr-only">Clear filters</span>
         </Button>
       )}
-
-      {/* Search — pushed to the right on desktop */}
-      <div className="relative sm:ml-auto min-w-[200px] flex-1 sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, ID, or effect..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
     </div>
   );
 }

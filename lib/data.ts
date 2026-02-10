@@ -37,6 +37,7 @@ export async function resolveSet(selectedSet: string) {
 
 interface GetCardsFilters {
   packId?: string;
+  packIds?: string[];
   searchQuery?: string;
   typeFilter?: string;
   colorFilter?: string;
@@ -56,13 +57,21 @@ export async function getCards(filters: GetCardsFilters = {}) {
       .order("id")
       .range(from, to);
 
-    if (filters.packId) {
+    if (filters.packIds && filters.packIds.length > 0) {
+      query = query.in("pack_id", filters.packIds);
+    } else if (filters.packId) {
       query = query.eq("pack_id", filters.packId);
     }
 
     if (filters.searchQuery) {
+      const q = filters.searchQuery.replace(/[%_\\]/g, "\\$&");
       query = query.or(
-        `name.ilike.%${filters.searchQuery}%,id.ilike.%${filters.searchQuery}%,effect.ilike.%${filters.searchQuery}%`
+        [
+          `name.ilike.%${q}%`,
+          `id.ilike.%${q}%`,
+          `effect.ilike.%${q}%`,
+          `trigger_text.ilike.%${q}%`,
+        ].join(",")
       );
     }
 
@@ -94,6 +103,18 @@ export async function getCards(filters: GetCardsFilters = {}) {
   }
 
   return allRows;
+}
+
+export async function getSetIdsByPrefixes(prefixes: string[]) {
+  "use cache";
+  cacheTag("sets");
+
+  const { data } = await supabase
+    .from("sets")
+    .select("id")
+    .in("prefix", prefixes);
+
+  return data?.map((s) => s.id) ?? [];
 }
 
 export async function getCard(cardId: string) {
