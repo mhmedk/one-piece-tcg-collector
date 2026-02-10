@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface CardTileProps {
   card: Card;
+  from?: string;
 }
 
 const rarityColors: Record<string, string> = {
@@ -24,12 +25,13 @@ const rarityColors: Record<string, string> = {
   Promo: "bg-cyan-500",
 };
 
-export function CardTile({ card }: CardTileProps) {
+export function CardTile({ card, from }: CardTileProps) {
   const { openAddDialog } = useAddToCollection();
+  const href = from ? `/cards/${card.id}?from=${from}` : `/cards/${card.id}`;
 
   return (
     <Link
-      href={`/cards/${card.id}`}
+      href={href}
       className="group relative block overflow-hidden rounded-lg transition-transform hover:scale-[1.02]"
     >
       <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-lg bg-muted">

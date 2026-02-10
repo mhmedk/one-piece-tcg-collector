@@ -17,8 +17,9 @@ A web application for browsing, collecting, and managing One Piece Trading Card 
 ### Backend & Data
 - **Database**: Supabase (PostgreSQL)
 - **Authentication**: Supabase Auth (Email/password + OAuth)
-- **Data Source**: optcgapi.com API (cached daily)
-- **Image Delivery**: CDN proxy/cache (Vercel Edge)
+- **Data Source**: Vegapull JSON files, imported via manual CLI script (`npm run import-cards`)
+- **Image Storage**: Supabase Storage (WebP, converted from PNG at import time via sharp)
+- **Image Delivery**: Served directly from Supabase Storage (no Next.js image optimization)
 
 ### Data Fetching
 - **Server**: React Server Components for page loads
@@ -34,8 +35,7 @@ A web application for browsing, collecting, and managing One Piece Trading Card 
 
 ### Infrastructure
 - **Hosting**: Vercel (free tier to start)
-- **Cron Jobs**: Vercel Cron (daily data sync)
-- **Payments**: Stripe (for premium tier)
+- **Payments**: Stripe (for premium tier, future)
 
 ---
 
@@ -44,9 +44,9 @@ A web application for browsing, collecting, and managing One Piece Trading Card 
 ### Data Flow
 
 ```
-optcgapi.com API
+Vegapull JSON files (local)
        │
-       ▼ (daily cron job)
+       ▼ (manual CLI: npm run import-cards)
    Supabase DB ◄──── User Collections/Decks
        │
        ▼
@@ -55,13 +55,13 @@ optcgapi.com API
 
 ### Key Architectural Decisions
 
-1. **Cached API Data**: Daily Vercel cron job fetches all card/set data from optcgapi.com and stores in Supabase. Frontend never calls external API directly.
+1. **Manual Data Import**: Card/set data is imported from vegapull JSON files via a CLI script (`scripts/import-cards.ts`). The script deduplicates cards, converts images to WebP, uploads to Supabase Storage, and upserts data into Supabase. Frontend never calls any external API directly.
 
-2. **Price History**: Store prices from each daily sync forever. Display is tiered: free users see 90 days, premium users see full history.
+2. **Price History**: Store prices forever. Display is tiered: free users see 90 days, premium users see full history.
 
-3. **Card Variants**: Initially follow API structure for variants. Future: treat each variant (alternate art, parallel rares, promos) as separate trackable items.
+3. **Card Variants**: Initially follow data source structure for variants. Future: treat each variant (alternate art, parallel rares, promos) as separate trackable items.
 
-4. **Images**: Route through Vercel's CDN for caching and optimization. No self-hosted image storage.
+4. **Images**: Stored in Supabase Storage as WebP (converted from PNG at import time using sharp). Served directly from Supabase Storage with 1-year cache-control headers. Next.js image optimization is disabled (`unoptimized: true`).
 
 ---
 
@@ -179,39 +179,42 @@ optcgapi.com API
 #### `sets`
 | Column | Type | Description |
 |--------|------|-------------|
-| id | uuid | Primary key |
-| set_id | text | External API ID |
-| set_name | text | Display name |
-| created_at | timestamp | When synced |
-| updated_at | timestamp | Last sync |
+| id | text | Primary key (vegapull pack ID) |
+| label | text | Set label (e.g. "OP01"), nullable |
+| name | text | Display name |
+| prefix | text | Set prefix, nullable |
+| raw_title | text | Original raw title from data source |
+| created_at | timestamp | When imported |
+| updated_at | timestamp | Last import |
 
 #### `cards`
 | Column | Type | Description |
 |--------|------|-------------|
-| id | uuid | Primary key |
-| card_id | text | External API ID |
-| set_id | uuid | Foreign key to sets |
-| card_name | text | Card name |
-| card_type | text | Character, Event, Stage, Leader, DON!! |
+| id | text | Primary key (vegapull card ID) |
+| pack_id | text | Foreign key to sets |
+| name | text | Card name |
+| category | text | Character, Event, Stage, Leader, DON!! |
 | rarity | text | C, UC, R, SR, SEC, L, etc. |
-| attribute | text | Slash, Strike, Ranged, etc. |
-| card_power | integer | Power stat |
-| card_cost | integer | Cost to play |
-| life | integer | Life (leaders only) |
-| counter_amount | integer | Counter value |
-| card_image | text | Image URL |
+| attributes | text[] | Array of attributes (Slash, Strike, Ranged, etc.) |
+| types | text[] | Array of card types |
 | colors | text[] | Card colors array |
-| card_text | text | Card effect text |
-| created_at | timestamp | When synced |
-| updated_at | timestamp | Last sync |
+| cost | integer | Cost to play (nullable) |
+| power | integer | Power stat (nullable) |
+| life | integer | Life (leaders only, nullable) |
+| counter | integer | Counter value (nullable) |
+| effect | text | Card effect text (nullable) |
+| trigger_text | text | Trigger effect text (nullable) |
+| img_url | text | Supabase Storage URL (WebP) |
+| block_number | integer | Block number (nullable) |
+| created_at | timestamp | When imported |
+| updated_at | timestamp | Last import |
 
 #### `price_history`
 | Column | Type | Description |
 |--------|------|-------------|
 | id | uuid | Primary key |
-| card_id | uuid | Foreign key to cards |
-| market_price | decimal | Market price |
-| inventory_price | decimal | Inventory price |
+| card_id | text | Foreign key to cards |
+| market_price | decimal | Market price (nullable) |
 | recorded_at | date | Date of snapshot |
 
 #### `users`
@@ -219,52 +222,56 @@ optcgapi.com API
 |--------|------|-------------|
 | id | uuid | Primary key (Supabase Auth) |
 | email | text | User email |
+| display_name | text | Display name (nullable) |
+| avatar_url | text | Avatar URL (nullable) |
 | is_premium | boolean | Premium subscriber |
-| premium_until | timestamp | Subscription end date |
 | created_at | timestamp | Registration date |
+| updated_at | timestamp | Last updated |
 
 #### `collection_entries`
 | Column | Type | Description |
 |--------|------|-------------|
 | id | uuid | Primary key |
 | user_id | uuid | Foreign key to users |
-| card_id | uuid | Foreign key to cards |
+| card_id | text | Foreign key to cards |
+| quantity | integer | Number of copies |
 | condition | text | mint, near-mint, played, heavily-played |
-| price_paid | decimal | Purchase price (nullable) |
-| acquired_at | date | Date acquired (nullable) |
-| source | text | Where acquired (nullable) |
+| purchase_price | decimal | Purchase price (nullable) |
 | notes | text | User notes (nullable) |
 | created_at | timestamp | When added |
+| updated_at | timestamp | Last updated |
 
-#### `decks`
+#### `decks` (not yet implemented)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | uuid | Primary key |
 | user_id | uuid | Foreign key to users |
 | name | text | Deck name |
-| leader_card_id | uuid | Foreign key to cards |
+| leader_card_id | text | Foreign key to cards |
 | share_id | text | Short random ID for sharing |
 | is_shared | boolean | Whether shareable link is active |
 | created_at | timestamp | Creation date |
 | updated_at | timestamp | Last modified |
 
-#### `deck_cards`
+#### `deck_cards` (not yet implemented)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | uuid | Primary key |
 | deck_id | uuid | Foreign key to decks |
-| card_id | uuid | Foreign key to cards |
+| card_id | text | Foreign key to cards |
 | quantity | integer | Number of copies (1-4) |
 
 #### `sync_logs`
 | Column | Type | Description |
 |--------|------|-------------|
 | id | uuid | Primary key |
-| started_at | timestamp | Sync start time |
-| completed_at | timestamp | Sync end time |
+| sync_type | text | Type of sync operation |
 | status | text | success, failed, partial |
-| cards_updated | integer | Count of cards updated |
-| error_message | text | Error details if failed |
+| cards_synced | integer | Count of cards synced (nullable) |
+| sets_synced | integer | Count of sets synced (nullable) |
+| started_at | timestamp | Sync start time |
+| completed_at | timestamp | Sync end time (nullable) |
+| error_message | text | Error details if failed (nullable) |
 
 ---
 
@@ -293,16 +300,11 @@ optcgapi.com API
 | `/api/decks/[deckId]/share` | POST | Generate share link |
 | `/api/analytics` | GET | User's analytics data |
 
-### Admin Routes
+### Admin Routes (not yet implemented)
 | Route | Method | Description |
 |-------|--------|-------------|
 | `/api/admin/sync` | POST | Trigger manual sync |
 | `/api/admin/sync/status` | GET | Get sync status/logs |
-
-### Cron Routes (Vercel Cron)
-| Route | Schedule | Description |
-|-------|----------|-------------|
-| `/api/cron/sync-cards` | Daily | Sync all card data from API |
 
 ---
 
@@ -377,11 +379,11 @@ optcgapi.com API
 
 ## Error Handling
 
-### Data Sync Strategy
-- Daily cron fetches from optcgapi.com
-- On success: update all card/price data in Supabase
-- On failure: log error, keep existing cached data
-- Frontend always reads from Supabase (never affected by API downtime)
+### Data Import Strategy
+- Manual CLI script (`npm run import-cards <vegapull-dir>`) imports card/set data
+- Script reads local vegapull JSON files, deduplicates, converts images to WebP, upserts to Supabase
+- On failure: script exits with error, existing data remains unchanged
+- Frontend always reads from Supabase (never affected by import process)
 
 ### User-Facing Errors
 - Form validation errors shown inline
@@ -403,8 +405,8 @@ optcgapi.com API
 ## Performance Optimizations
 
 - Server Components for initial page loads
-- SWR for client-side data mutations with optimistic updates
-- Image optimization via Vercel CDN
+- SWR for client-side collection data with optimistic updates
+- Images served from Supabase Storage with 1-year cache-control headers
 - Database indexes on frequently queried columns
 - Pagination for large card lists
 
@@ -445,9 +447,6 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# External API
-OPTCG_API_BASE_URL=https://optcgapi.com
-
 # Admin
 ADMIN_EMAILS=admin@example.com,admin2@example.com
 
@@ -455,9 +454,6 @@ ADMIN_EMAILS=admin@example.com,admin2@example.com
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-
-# Cron Secret (Vercel)
-CRON_SECRET=
 ```
 
 ---
@@ -466,17 +462,7 @@ CRON_SECRET=
 
 ### Vercel Configuration
 
-```json
-// vercel.json
-{
-  "crons": [
-    {
-      "path": "/api/cron/sync-cards",
-      "schedule": "0 6 * * *"
-    }
-  ]
-}
-```
+Currently minimal (`vercel.json` is empty). No cron jobs configured.
 
 ### Database Migrations
 - Managed via Supabase migrations
