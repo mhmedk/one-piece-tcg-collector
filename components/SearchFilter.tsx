@@ -162,7 +162,7 @@ export function SearchFilter({
                      (searchParams.has("sort") && searchParams.get("sort") !== "set");
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:justify-center">
       <Select
         value={activeCategoryKey}
         onValueChange={handleCategoryChange}
