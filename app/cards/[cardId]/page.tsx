@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/server";
+import { getCard } from "@/lib/data";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCollectionButton } from "./AddToCollectionButton";
@@ -22,19 +22,6 @@ const rarityColors: Record<string, string> = {
   Special: "bg-pink-500",
   Promo: "bg-cyan-500",
 };
-
-async function getCard(cardId: string) {
-  const supabase = await createClient();
-
-  const { data: card, error } = await supabase
-    .from("cards")
-    .select("*, sets(id, label, name)")
-    .eq("id", cardId)
-    .single();
-
-  if (error || !card) return null;
-  return card;
-}
 
 export default async function CardDetailPage({ params, searchParams }: PageProps) {
   const { cardId } = await params;

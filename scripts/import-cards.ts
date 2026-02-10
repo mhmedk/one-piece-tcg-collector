@@ -306,6 +306,24 @@ async function main() {
   }
 
   console.log(`\nImport complete: ${setRows.length} sets, ${cardRows.length} cards`);
+
+  // Trigger on-demand revalidation so cached pages reflect new data
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const revalidationSecret = process.env.REVALIDATION_SECRET;
+  if (appUrl && revalidationSecret) {
+    try {
+      const res = await fetch(`${appUrl}/api/revalidate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${revalidationSecret}` },
+      });
+      const body = await res.json();
+      console.log(`Revalidation: ${res.ok ? "success" : "failed"}`, body);
+    } catch (err) {
+      console.warn("Revalidation request failed (non-blocking):", err);
+    }
+  } else {
+    console.log("Skipping revalidation (NEXT_PUBLIC_APP_URL or REVALIDATION_SECRET not set)");
+  }
 }
 
 main().catch((err) => {

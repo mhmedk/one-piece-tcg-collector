@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { CardTile } from "@/components/CardTile";
 import type { Card } from "@/types/database";
 
@@ -22,12 +22,12 @@ function getColumnCount(width: number): number {
 const GAP = 16; // gap-4 = 1rem = 16px
 
 export function VirtualCardGrid({ cards, from }: VirtualCardGridProps) {
-  const parentRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(6);
 
   const updateColumns = useCallback(() => {
-    if (parentRef.current) {
-      setColumns(getColumnCount(parentRef.current.offsetWidth));
+    if (listRef.current) {
+      setColumns(getColumnCount(listRef.current.offsetWidth));
     }
   }, []);
 
@@ -35,8 +35,8 @@ export function VirtualCardGrid({ cards, from }: VirtualCardGridProps) {
     updateColumns();
 
     const observer = new ResizeObserver(updateColumns);
-    if (parentRef.current) {
-      observer.observe(parentRef.current);
+    if (listRef.current) {
+      observer.observe(listRef.current);
     }
     return () => observer.disconnect();
   }, [updateColumns]);
@@ -45,27 +45,23 @@ export function VirtualCardGrid({ cards, from }: VirtualCardGridProps) {
 
   const estimateRowHeight = useCallback(
     () => {
-      if (!parentRef.current) return 300;
-      const containerWidth = parentRef.current.offsetWidth;
+      if (!listRef.current) return 300;
+      const containerWidth = listRef.current.offsetWidth;
       const cardWidth = (containerWidth - GAP * (columns - 1)) / columns;
       return cardWidth * (4.2 / 3) + GAP;
     },
     [columns]
   );
 
-  const virtualizer = useVirtualizer({
+  const virtualizer = useWindowVirtualizer({
     count: rowCount,
-    getScrollElement: () => parentRef.current,
     estimateSize: estimateRowHeight,
     overscan: 3,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
   });
 
   return (
-    <div
-      ref={parentRef}
-      className="overflow-auto"
-      style={{ height: "calc(100vh - 12rem)" }}
-    >
+    <div ref={listRef}>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -87,7 +83,7 @@ export function VirtualCardGrid({ cards, from }: VirtualCardGridProps) {
                 top: 0,
                 left: 0,
                 width: "100%",
-                transform: `translateY(${virtualRow.start}px)`,
+                transform: `translateY(${virtualRow.start - virtualizer.options.scrollMargin}px)`,
                 paddingBottom: `${GAP}px`,
               }}
             >
