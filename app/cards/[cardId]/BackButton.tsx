@@ -10,23 +10,27 @@ interface BackButtonProps {
   from?: string;
 }
 
-export function BackButton({ setParam, setDisplayName, from }: BackButtonProps) {
+export function BackButton({ setDisplayName, from }: BackButtonProps) {
   const router = useRouter();
 
-  const isFromCollection = from === "collection";
+  const getLabel = () => {
+    if (from === "collection") return "Back to Collection";
+    if (from === "all") return "Back to All Cards";
+    return `Back to ${setDisplayName}`;
+  };
 
   const handleClick = () => {
-    if (isFromCollection) {
+    if (from === "collection") {
       router.push("/collection");
     } else {
-      router.push(`/?set=${setParam}`);
+      router.back();
     }
   };
 
   return (
     <Button variant="ghost" className="mb-6" onClick={handleClick}>
       <ArrowLeft className="mr-2 h-4 w-4" />
-      {isFromCollection ? "Back to Collection" : `Back to ${setDisplayName}`}
+      {getLabel()}
     </Button>
   );
 }

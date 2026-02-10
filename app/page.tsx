@@ -7,16 +7,18 @@ type PageProps = {
     type?: string;
     color?: string;
     rarity?: string;
+    sort?: string;
   }>;
 };
 
 const Home = async ({ searchParams }: PageProps) => {
   const {
-    set: selectedSet = "OP-01",
+    set: selectedSet = "all",
     q: searchQuery,
     type: typeFilter,
     color: colorFilter,
     rarity: rarityFilter,
+    sort: sortBy = "set",
   } = await searchParams;
 
   return (
@@ -27,6 +29,7 @@ const Home = async ({ searchParams }: PageProps) => {
         typeFilter={typeFilter}
         colorFilter={colorFilter}
         rarityFilter={rarityFilter}
+        sortBy={sortBy}
       />
     </main>
   );
