@@ -1,6 +1,6 @@
 import { SearchFilter } from "@/components/SearchFilter";
 import { VirtualCardGrid } from "@/components/VirtualCardGrid";
-import { getCards, getSets, resolveSet } from "@/lib/data";
+import { getCards, getSets, getSetIdsByPrefixes, resolveSet } from "@/lib/data";
 
 interface CardListProps {
   selectedSet: string;
@@ -21,12 +21,23 @@ const CardList = async ({
 }: CardListProps) => {
   const isAllCards = selectedSet === "all";
 
-  const resolvedSet = isAllCards ? null : await resolveSet(selectedSet);
+  const CATEGORY_PREFIXES: Record<string, { prefixes: string[]; label: string }> = {
+    "all-booster": { prefixes: ["BOOSTER PACK", "EXTRA BOOSTER", "PREMIUM BOOSTER"], label: "All Sets & Expansions" },
+    "all-deck": { prefixes: ["STARTER DECK", "STARTER DECK EX", "ULTRA DECK"], label: "All Decks" },
+  };
+
+  const categoryAll = CATEGORY_PREFIXES[selectedSet];
+  const resolvedSet = isAllCards || categoryAll ? null : await resolveSet(selectedSet);
   const packId = resolvedSet?.id;
-  const displayName = isAllCards ? "All Cards" : (resolvedSet?.label ?? resolvedSet?.name ?? selectedSet);
+  const packIds = categoryAll ? await getSetIdsByPrefixes(categoryAll.prefixes) : undefined;
+  const displayName = categoryAll
+    ? categoryAll.label
+    : isAllCards
+      ? "All Cards"
+      : (resolvedSet?.label ?? resolvedSet?.name ?? selectedSet);
 
   const [cards, sets] = await Promise.all([
-    getCards({ packId, searchQuery, typeFilter, colorFilter, rarityFilter }),
+    getCards({ packId, packIds, searchQuery, typeFilter, colorFilter, rarityFilter }),
     getSets(),
   ]);
 
