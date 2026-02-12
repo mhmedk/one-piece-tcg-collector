@@ -234,6 +234,7 @@ export type Database = {
           email: string
           id: string
           is_premium: boolean
+          role: string
           updated_at: string
         }
         Insert: {
@@ -243,6 +244,7 @@ export type Database = {
           email: string
           id: string
           is_premium?: boolean
+          role?: string
           updated_at?: string
         }
         Update: {
@@ -252,6 +254,7 @@ export type Database = {
           email?: string
           id?: string
           is_premium?: boolean
+          role?: string
           updated_at?: string
         }
         Relationships: []

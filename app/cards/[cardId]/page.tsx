@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { getCard } from "@/lib/data";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { CardIdDisplay } from "@/components/CardIdDisplay";
 import { AddToCollectionButton } from "./AddToCollectionButton";
 import { BackButton } from "./BackButton";
 
@@ -66,7 +67,7 @@ export default async function CardDetailPage({ params, searchParams }: PageProps
                 {card.rarity}
               </Badge>
             </div>
-            <p className="text-muted-foreground mt-1">{card.id}</p>
+            <p className="text-muted-foreground mt-1"><CardIdDisplay id={card.id} /></p>
           </div>
 
           <Card>

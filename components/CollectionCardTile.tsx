@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { CardIdDisplay } from "@/components/CardIdDisplay";
 import { cn } from "@/lib/utils";
 import type { CollectionEntry } from "@/lib/hooks/useCollection";
 
@@ -168,7 +169,7 @@ export function CollectionCardTile({ entry, onUpdate, onDelete }: CollectionCard
           {/* Card info on hover */}
           <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full transition-transform group-hover:translate-y-0">
             <p className="text-sm font-medium text-white truncate">{entry.card.name}</p>
-            <p className="text-xs text-white/80">{entry.card.id}</p>
+            <p className="text-xs text-white/80"><CardIdDisplay id={entry.card.id} /></p>
           </div>
         </div>
       </div>

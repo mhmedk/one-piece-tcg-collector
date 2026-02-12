@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Oswald, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AddToCollectionProvider } from "@/components/AddToCollectionProvider";
@@ -17,8 +18,8 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: "One Piece TCG Collector",
-  description: "One Piece Trading Card Game Collector",
+  title: "My OP Binder",
+  description: "Track and manage your One Piece TCG card collection",
 };
 
 export default function RootLayout({
@@ -33,7 +34,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AddToCollectionProvider>
-            <Header />
+            <Suspense>
+              <Header />
+            </Suspense>
             {children}
             <Toaster />
           </AddToCollectionProvider>

@@ -7,6 +7,7 @@ import { Card } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAddToCollection } from "@/components/AddToCollectionProvider";
+import { CardIdDisplay } from "@/components/CardIdDisplay";
 import { cn } from "@/lib/utils";
 
 interface CardTileProps {
@@ -71,7 +72,7 @@ export function CardTile({ card, from }: CardTileProps) {
         {/* Card info on hover */}
         <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full transition-transform group-hover:translate-y-0">
           <p className="text-sm font-medium text-white truncate">{card.name}</p>
-          <p className="text-xs text-white/80">{card.id}</p>
+          <p className="text-xs text-white/80"><CardIdDisplay id={card.id} /></p>
         </div>
       </div>
     </Link>

@@ -33,8 +33,8 @@ export function MobileNav() {
       <SheetContent side="left" className="w-64">
         <SheetHeader>
           <SheetTitle className="font-oswald text-lg tracking-tight">
-            <span className="text-muted-foreground font-normal">One Piece TCG</span>{" "}
-            <span className="text-primary font-bold">Collector</span>
+            <span className="text-muted-foreground font-normal">MY OP</span>{" "}
+            <span className="text-primary font-bold">BINDER</span>
           </SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-1 mt-4">

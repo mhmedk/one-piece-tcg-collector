@@ -1,4 +1,4 @@
--- One Piece TCG Collector - Initial Schema
+-- My OP Binder - Initial Schema
 -- Run this migration in the Supabase SQL Editor
 
 -- ============================================
