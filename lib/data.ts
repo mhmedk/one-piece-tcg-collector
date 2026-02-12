@@ -65,10 +65,32 @@ export async function getCards(filters: GetCardsFilters = {}) {
 
     if (filters.searchQuery) {
       const q = filters.searchQuery.replace(/[%_\\]/g, "\\$&");
+      // Build a flexible ID pattern by splitting into letter/digit groups
+      // and joining with %, e.g. "OP10012" → "OP%10%012" matches "OP10-012"
+      const stripped = filters.searchQuery.replace(/[^a-zA-Z0-9]/g, "");
+      const runs = stripped.match(/[a-zA-Z]+|[0-9]+/g) ?? [];
+      const groups: string[] = [];
+      for (const run of runs) {
+        if (/^\d+$/.test(run) && run.length > 3) {
+          // Split long digit runs from the right in groups of 3
+          let remaining = run;
+          const parts: string[] = [];
+          while (remaining.length > 3) {
+            parts.unshift(remaining.slice(-3));
+            remaining = remaining.slice(0, -3);
+          }
+          if (remaining) parts.unshift(remaining);
+          groups.push(...parts);
+        } else {
+          groups.push(run);
+        }
+      }
+      const fuzzyId = groups.length > 0 ? groups.join("%") : q;
+
       query = query.or(
         [
           `name.ilike.%${q}%`,
-          `id.ilike.%${q}%`,
+          `id.ilike.%${fuzzyId}%`,
           `effect.ilike.%${q}%`,
           `trigger_text.ilike.%${q}%`,
         ].join(",")

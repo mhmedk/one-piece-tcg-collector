@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings, Shield } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function UserNav() {
+export function UserNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
 
@@ -81,6 +81,14 @@ export function UserNav() {
             Settings
           </Link>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/admin" className="flex cursor-pointer">
+              <Shield className="mr-2 h-4 w-4" />
+              Admin
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />

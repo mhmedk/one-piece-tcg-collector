@@ -1,15 +1,44 @@
+import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getCard } from "@/lib/data";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { CardIdDisplay } from "@/components/CardIdDisplay";
 import { AddToCollectionButton } from "./AddToCollectionButton";
 import { BackButton } from "./BackButton";
 
 interface PageProps {
   params: Promise<{ cardId: string }>;
   searchParams: Promise<{ from?: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { cardId } = await params;
+  const card = await getCard(cardId);
+
+  if (!card) {
+    return { title: "Card Not Found" };
+  }
+
+  const description = `${card.rarity} ${card.category} — ${card.colors.join(" / ")}`;
+
+  return {
+    title: card.name,
+    description,
+    openGraph: {
+      title: card.name,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: card.name,
+      description,
+    },
+  };
 }
 
 const rarityColors: Record<string, string> = {
@@ -66,7 +95,7 @@ export default async function CardDetailPage({ params, searchParams }: PageProps
                 {card.rarity}
               </Badge>
             </div>
-            <p className="text-muted-foreground mt-1">{card.id}</p>
+            <p className="text-muted-foreground mt-1"><CardIdDisplay id={card.id} /></p>
           </div>
 
           <Card>

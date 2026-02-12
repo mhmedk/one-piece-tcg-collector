@@ -1,8 +1,8 @@
-# One Piece TCG Collector - Technical Specification
+# My OP Binder - Technical Specification
 
 ## Overview
 
-A web application for browsing, collecting, and managing One Piece Trading Card Game collections with portfolio analytics, deck building, and social sharing features.
+A web application for browsing, collecting, and managing your One Piece TCG card collection with portfolio analytics, deck building, and social sharing features.
 
 ---
 

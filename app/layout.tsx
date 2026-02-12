@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Oswald, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AddToCollectionProvider } from "@/components/AddToCollectionProvider";
@@ -16,9 +17,27 @@ const oswald = Oswald({
   subsets: ["latin"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.myopbinder.com";
+
 export const metadata: Metadata = {
-  title: "One Piece TCG Collector",
-  description: "One Piece Trading Card Game Collector",
+  metadataBase: new URL(appUrl),
+  title: {
+    default: "My OP Binder",
+    template: "%s | My OP Binder",
+  },
+  description: "Track and manage your One Piece TCG card collection",
+  openGraph: {
+    type: "website",
+    siteName: "My OP Binder",
+    title: "My OP Binder",
+    description: "Track and manage your One Piece TCG card collection",
+    url: appUrl,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "My OP Binder",
+    description: "Track and manage your One Piece TCG card collection",
+  },
 };
 
 export default function RootLayout({
@@ -33,7 +52,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AddToCollectionProvider>
-            <Header />
+            <Suspense>
+              <Header />
+            </Suspense>
             {children}
             <Toaster />
           </AddToCollectionProvider>
