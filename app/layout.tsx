@@ -17,9 +17,27 @@ const oswald = Oswald({
   subsets: ["latin"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.myopbinder.com";
+
 export const metadata: Metadata = {
-  title: "My OP Binder",
+  metadataBase: new URL(appUrl),
+  title: {
+    default: "My OP Binder",
+    template: "%s | My OP Binder",
+  },
   description: "Track and manage your One Piece TCG card collection",
+  openGraph: {
+    type: "website",
+    siteName: "My OP Binder",
+    title: "My OP Binder",
+    description: "Track and manage your One Piece TCG card collection",
+    url: appUrl,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "My OP Binder",
+    description: "Track and manage your One Piece TCG card collection",
+  },
 };
 
 export default function RootLayout({

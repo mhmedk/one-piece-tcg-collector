@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +12,33 @@ import { BackButton } from "./BackButton";
 interface PageProps {
   params: Promise<{ cardId: string }>;
   searchParams: Promise<{ from?: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { cardId } = await params;
+  const card = await getCard(cardId);
+
+  if (!card) {
+    return { title: "Card Not Found" };
+  }
+
+  const description = `${card.rarity} ${card.category} — ${card.colors.join(" / ")}`;
+
+  return {
+    title: card.name,
+    description,
+    openGraph: {
+      title: card.name,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: card.name,
+      description,
+    },
+  };
 }
 
 const rarityColors: Record<string, string> = {
